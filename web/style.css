@@ -1,0 +1,26 @@
+    body {
+        background: #444;
+        color: #fff;
+        font-family: Sans;
+    }
+
+    h1 {
+        font-family: Helvetica;
+    }
+
+    a {
+        color: #ccc;
+    }
+    .ctr {
+        display: block;
+        margin: auto;
+        width: 80%;
+        position: relative;
+        top: 30px;
+    }
+
+    .button {
+        font-style: italic;
+        margin-top: 20px;
+        width: 250px;
+    }
