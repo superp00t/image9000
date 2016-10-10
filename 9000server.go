@@ -30,12 +30,12 @@ func GenerateToken() string {
 }
 
 func Log(handler http.Handler) http.Handler {
-	if logrequests {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if *logrequests {
 			fmt.Printf("%s %s %s\n", r.RemoteAddr, r.Method, r.URL)
 			handler.ServeHTTP(w, r)
-		})
-	}
+		}
+	})
 }
 
 func ImageHandler(rw http.ResponseWriter, r *http.Request) {
