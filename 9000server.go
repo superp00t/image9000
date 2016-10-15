@@ -90,7 +90,7 @@ func main() {
 		os.Mkdir("web/img", 0666)
 	}
 
-	http.Handle(*subpath, http.FileServer(http.Dir("web")))
+	http.Handle("/", http.FileServer(http.Dir("web")))
 
 	http.HandleFunc("/upload", UploadHandler)
 	http.ListenAndServe(*addr, Log(http.DefaultServeMux))
