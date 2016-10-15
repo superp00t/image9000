@@ -70,8 +70,7 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 				if err != nil {
 					panic(err)
 				}
-				fmt.Println("redirecting to " + *subpath + "img/" + id)
-				http.Redirect(rw, r, *subpath+"img/"+id+"."+acceptedfmt[ImageType], 301)
+				http.Redirect(rw, r, *subpath+"img/"+id, 301)
 			} else {
 				http.Redirect(rw, r, "https://www.youtube.com/watch?v=dQw4w9WgXcQ", 301)
 			}
