@@ -1,7 +1,8 @@
 package main
 
 import (
-	"bufio"
+	"bytes"
+	"io"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -48,23 +49,23 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 	case "POST":
 		r.ParseMultipartForm(*maxSize)
 		file, _, _ := r.FormFile("file")
+
 		if r.ContentLength > *maxSize {
 			http.Error(rw, "File Too big!", http.StatusRequestEntityTooLarge)
 			return
 		}
 
-		ImageReader := bufio.NewReader(file)
-		ImageBuffer := make([]byte, r.ContentLength)
-		_, err := ImageReader.Read(ImageBuffer)
-		if err != nil {
-			http.Error(rw, err.Error(), http.StatusInternalServerError)
-			return
-		}
 
+		var ImageBuf bytes.Buffer
+
+		io.Copy(&ImageBuf, file)
+
+		ImageBuffer := ImageBuf.Bytes()
 		ImageType := http.DetectContentType(ImageBuffer)
 
 		if acceptedfmt[ImageType] != "" {
 			id := CreateFileId(ImageBuffer, acceptedfmt[ImageType])
+			fmt.Println("File id:", id)
 			if _, err := os.Stat("web/img/" + id); os.IsNotExist(err) {
 				err = ioutil.WriteFile("web/img/"+id, ImageBuffer, 0666)
 				if err != nil {
