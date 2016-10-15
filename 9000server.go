@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"os"
 	"time"
+	"crypto/sha256"
+	"encoding/hex"
 )
 
 var maxSize = flag.Int64("maxSize", 20971520, "the maximum size in bytes a user is allowed to upload")
@@ -28,14 +30,10 @@ var acceptedfmt = map[string]string{
 	"audio/mp3":        "mp3",
 }
 
-func GenerateToken() string {
-	const alphanum = "0123456789abcdefghijklmnopqrstuvwxyz"
-	rand.Seed(time.Now().UTC().UnixNano())
-	result := make([]byte, 14)
-	for i := 0; i < 14; i++ {
-		result[i] = alphanum[rand.Intn(len(alphanum))]
-	}
-	return string(result)
+func CreateFileId(bt []byte, ext string) string {
+	bytes := sha256.Sum256(bt)
+	sha := hex.EncodeToString(bytes[:])
+	return sha[:14] + "." + ext
 }
 
 func Log(handler http.Handler) http.Handler {
@@ -65,15 +63,20 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		id := GenerateToken()
 		ImageType := http.DetectContentType(ImageBuffer)
+
 		if acceptedfmt[ImageType] != "" {
-			err = ioutil.WriteFile("web/img/"+id+"."+acceptedfmt[ImageType], ImageBuffer, 0666)
-			if err != nil {
-				panic(err)
+			id := CreateFileId(ImageBuffer, acceptedfmt[ImageType])
+			if _, err := os.Stat("web/img/" + id); os.IsNotExist(err) {
+				err = ioutil.WriteFile("web/img/"+id, ImageBuffer, 0666)
+				if err != nil {
+					panic(err)
+				}
+				fmt.Println("redirecting to " + *subpath + "img/" + id)
+				http.Redirect(rw, r, *subpath+"img/"+id+"."+acceptedfmt[ImageType], 301)
+			} else {
+				http.Redirect(rw, r, "https://www.youtube.com/watch?v=dQw4w9WgXcQ", 301)
 			}
-			fmt.Println("redirecting to " + *subpath + "img/" + id + "." + acceptedfmt[ImageType])
-			http.Redirect(rw, r, *subpath+"img/"+id+"."+acceptedfmt[ImageType], 301)
 		} else {
 			http.Error(rw, fmt.Sprintf("File type (%s) not supported.", ImageType), http.StatusBadRequest)
 		}
