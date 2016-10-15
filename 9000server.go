@@ -25,7 +25,7 @@ var acceptedfmt = map[string]string{
 	"video/ogg":        "ogv",
 	"application/ogg":  "ogg",
 	"audio/ogg":        "ogg",
-	"audio/mp3":        "ogv",
+	"audio/mp3":        "mp3",
 	"text/plain":       "txt",
 }
 
