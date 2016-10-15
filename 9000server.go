@@ -5,10 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"net/http"
 	"os"
-	"time"
 	"crypto/sha256"
 	"encoding/hex"
 )
