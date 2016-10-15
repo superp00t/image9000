@@ -26,7 +26,6 @@ var acceptedfmt = map[string]string{
 	"application/ogg":  "ogg",
 	"audio/ogg":        "ogg",
 	"audio/mp3":        "mp3",
-	"text/plain":       "txt",
 }
 
 func GenerateToken() string {
