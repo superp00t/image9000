@@ -26,3 +26,7 @@ Usage of ./9000server:
 -  -subpath string
 
     	configure a subdirectory, for use with a reverse proxy (example: ./9000server -subpath=/image9000/)
+
+- -rateLimit int
+
+	limit the numer of requests per minute
