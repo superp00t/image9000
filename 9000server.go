@@ -66,6 +66,10 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 		ip := strings.Split(r.RemoteAddr, ":")[0]
 
 		if postsPerMinute[ip] >= *rateLimit {
+			if *logrequests {
+				fmt.Println(ip + " is posting too much. Rate limiting!")
+			}
+
 			http.Redirect(rw, r, *subpath+"calm_down.html", 301)
 			return
 		}
