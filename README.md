@@ -9,7 +9,7 @@ go build 9000server.go
 `
 ### Running the server
 
-`
+~~~~
 ./9000server
 
 Usage of ./9000server:
@@ -25,4 +25,4 @@ Usage of ./9000server:
     	configure a subdirectory, for use with a reverse proxy (example: ./9000server -subpath=/image9000/) (default "/")
   -use-X-Real-IP
     	use the X-Real-IP header, useful for rate limiting behind a reverse proxy.
-`
+~~~~
