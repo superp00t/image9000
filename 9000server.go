@@ -20,6 +20,7 @@ var addr = flag.String("addr", "localhost:8000", "host:port format IP address to
 var subpath = flag.String("subpath", "/", "configure a subdirectory, for use with a reverse proxy (example: ./9000server -subpath=/image9000/)")
 var logrequests = flag.Bool("logrequests", false, "print all HTTP requests to stdout")
 var rateLimit = flag.Int("rateLimit", 8, "the amount of files a user is allowed to upload per minute.")
+var useXRealIP = flag.Bool("use-X-Real-IP", false, "use the X-Real-IP header, useful for rate limiting behind a reverse proxy.")
 
 var acceptedfmt = map[string]string{
 	"image/jpeg":       "jpg",
@@ -52,8 +53,16 @@ func CreateFileId(bt []byte, ext string) string {
 
 func Log(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var ip string
+
+		if !*useXRealIP {
+                        ip = strings.Split(r.RemoteAddr, ":")[0]
+                } else {
+                        ip = r.Header.Get("X-Real-IP")
+                }
+
 		if *logrequests {
-			fmt.Printf("%s (%s) %s %s\n", r.RemoteAddr, r.UserAgent(), r.Method, r.URL)
+			fmt.Printf("%s (%s) %s %s\n", ip, r.UserAgent(), r.Method, r.URL)
 		}
 
 		handler.ServeHTTP(w, r)
@@ -63,7 +72,14 @@ func Log(handler http.Handler) http.Handler {
 func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
-		ip := strings.Split(r.RemoteAddr, ":")[0]
+		var ip string
+
+		if !*useXRealIP {
+			ip = strings.Split(r.RemoteAddr, ":")[0]
+		} else {
+			ip = r.Header.Get("X-Real-IP")
+		}
+
 
 		if postsPerMinute[ip] >= *rateLimit {
 			if *logrequests {
