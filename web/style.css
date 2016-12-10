@@ -24,3 +24,7 @@
         margin-top: 20px;
         width: 250px;
     }
+
+    #show-img{ 
+        max-width: 500px;
+    }
