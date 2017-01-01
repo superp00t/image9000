@@ -14,7 +14,9 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 )
@@ -32,16 +34,30 @@ var (
 )
 
 var acceptedfmt = map[string]string{
-	"image/jpeg":       "jpg",
-	"image/png":        "png",
-	"image/gif":        "gif",
-	"video/webm":       "webm",
-	"video/x-matroska": "mkv",
-	"video/mp4":        "mp4",
-	"video/ogg":        "ogv",
-	"application/ogg":  "ogg",
-	"audio/ogg":        "ogg",
-	"audio/mp3":        "mp3",
+	"image/jpeg":                "jpg",
+	"image/png":                 "png",
+	"image/gif":                 "gif",
+	"video/webm":                "webm",
+	"video/x-matroska":          "mkv",
+	"video/mp4":                 "mp4",
+	"video/ogg":                 "ogv",
+	"application/ogg":           "ogg",
+	"audio/ogg":                 "ogg",
+	"audio/mp3":                 "mp3",
+	"audio/mpeg":                "mp3",
+	"text/plain; charset=utf-8": "txt",
+}
+
+var acceptedTextFmt = []string{
+	"css",
+	"obj",
+	"js",
+	"json",
+	"xml",
+	"txt",
+	"sh",
+	"lua",
+	"go",
 }
 
 var SassyRemarks = []string{
@@ -51,14 +67,37 @@ var SassyRemarks = []string{
 	"dear god make it stop",
 	"this clearly isn't professional",
 	"holy fuck this uploader sucks",
+	"remember to stop uploading every now and again. uploading for extended periods is unhealthy",
+	"if this doesn't work please open an issue on github",
 }
 
 var postsPerMinute map[string]int
 
+type Req struct {
+	r *http.Request
+}
+
 type IndexPage struct {
-	ShowImage   bool
-	ImageURL    string
-	SassyRemark string
+	ShowImage     bool
+	AcceptedTypes []string
+	ImageURL      string
+	SassyRemark   string
+	Stamp         string
+}
+
+type rateLimitNotificationPage struct {
+	IP    string
+	Limit int
+}
+
+func (req *Req) IP() string {
+	var ip string
+	if !*useXRealIP {
+		ip = strings.Split(req.r.RemoteAddr, ":")[0]
+	} else {
+		ip = req.r.Header.Get("X-Real-IP")
+	}
+	return ip
 }
 
 func RateLimiter() {
@@ -76,13 +115,8 @@ func CreateFileId(bt []byte, ext string) string {
 
 func Log(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var ip string
-
-		if !*useXRealIP {
-			ip = strings.Split(r.RemoteAddr, ":")[0]
-		} else {
-			ip = r.Header.Get("X-Real-IP")
-		}
+		ipr := Req{r}
+		ip := ipr.IP()
 
 		if *logrequests {
 			fmt.Printf("%s (%s) %s %s\n", ip, r.UserAgent(), r.Method, r.URL)
@@ -95,18 +129,13 @@ func Log(handler http.Handler) http.Handler {
 func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
-		var ip string
-
-		if !*useXRealIP {
-			ip = strings.Split(r.RemoteAddr, ":")[0]
-		} else {
-			ip = r.Header.Get("X-Real-IP")
-		}
+		ipr := Req{r}
+		ip := ipr.IP()
 
 		if postsPerMinute[ip] >= *rateLimit {
 			Debug(ip + " is posting too much. Rate limiting!")
 
-			http.Redirect(rw, r, *subpath+"calm_down.html", 301)
+			http.Redirect(rw, r, *subpath+"ratelimit", 301)
 			return
 		}
 
@@ -114,7 +143,12 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 
 		r.ParseForm()
 		r.ParseMultipartForm(*maxSize)
-		file, _, _ := r.FormFile("file")
+		file, fileData, err := r.FormFile("file")
+
+		if err != nil {
+			http.Error(rw, err.Error(), http.StatusRequestEntityTooLarge)
+			return
+		}
 
 		if r.ContentLength > *maxSize {
 			http.Error(rw, "File Too big!", http.StatusRequestEntityTooLarge)
@@ -133,10 +167,30 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 
 		Debug(fmt.Sprintf("%d bytes read type %s", wr, FileType))
 
-		if acceptedfmt[FileType] == "" {
+		var ext string
+		ext = acceptedfmt[FileType]
+		if ext == "" {
 			Debug("Filetype " + FileType + " not supported")
 			http.Error(rw, fmt.Sprintf("File type (%s) not supported.", FileType), http.StatusBadRequest)
 			return
+		}
+
+		if FileType == "text/plain; charset=utf-8" {
+			ext = filepath.Ext(fileData.Filename)[1:]
+			okay := false
+
+			for _, validExt := range acceptedTextFmt {
+				if ext == validExt {
+					okay = true
+					break
+				}
+			}
+
+			if !okay {
+				Debug("Text type " + ext + " not supported")
+				http.Error(rw, fmt.Sprintf("Text type (%s) not supported.", ext), http.StatusBadRequest)
+				return
+			}
 		}
 
 		if FileType == "image/jpeg" {
@@ -156,7 +210,7 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		id := CreateFileId(FileBuf.Bytes(), acceptedfmt[FileType])
+		id := CreateFileId(FileBuf.Bytes(), ext)
 
 		if _, err := os.Stat("i/" + id); os.IsNotExist(err) {
 			Debug(id + " doesn't exist, writing...")
@@ -170,6 +224,21 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(rw, "Bad Request", http.StatusBadRequest)
 	}
+}
+
+func rateLimitNotification(rw http.ResponseWriter, r *http.Request) {
+	t, err := template.ParseFiles("pages/ratelimit.html")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	ipr := Req{r}
+	ip := ipr.IP()
+
+	t.Execute(rw, rateLimitNotificationPage{
+		IP:    ip,
+		Limit: *rateLimit,
+	})
 }
 
 func main() {
@@ -188,12 +257,16 @@ func main() {
 	go RateLimiter()
 
 	http.HandleFunc("/", IndexHTML)
+	http.HandleFunc("/ratelimit", rateLimitNotification)
 	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("web"))))
 	http.Handle("/i/", http.StripPrefix("/i/", http.FileServer(http.Dir("i"))))
 
 	http.HandleFunc("/upload", UploadHandler)
-	http.ListenAndServe(*addr, Log(http.DefaultServeMux))
-
+	log.Printf("Listening at %s\n", *addr)
+	err = http.ListenAndServe(*addr, Log(http.DefaultServeMux))
+	if err != nil {
+		log.Fatal(err)
+	}
 }
 
 func Debug(str string) {
@@ -203,22 +276,46 @@ func Debug(str string) {
 }
 
 func IndexHTML(rw http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	var acc []string
+	var result IndexPage
+	encounter := make(map[string]bool)
+	for _, tfmt := range acceptedfmt {
+		if !encounter[tfmt] {
+			acc = append(acc, tfmt)
+		}
+
+		encounter[tfmt] = true
+	}
+
+	for _, tfmt := range acceptedTextFmt {
+		if !encounter[tfmt] {
+			acc = append(acc, tfmt)
+		}
+
+		encounter[tfmt] = true
+	}
+
+	sort.Strings(acc)
+
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	t, err := template.ParseFiles("web/index.html")
+	t, err := template.ParseFiles("pages/index.html")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	result.SassyRemark = SassyRemarks[rand.Intn(len(SassyRemarks))]
+	result.AcceptedTypes = acc
+
+	var filenames []string
+
+	files, err := ioutil.ReadDir("i/")
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	if *showRandomImage {
-		files, err := ioutil.ReadDir("i/")
-
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		var filenames []string
-
 		for _, file := range files {
 			if imageExt.MatchString(file.Name()) && file.Size() < 800000 {
 				filenames = append(filenames, file.Name())
@@ -226,23 +323,15 @@ func IndexHTML(rw http.ResponseWriter, r *http.Request) {
 		}
 
 		if len(filenames) == 0 {
-			t.Execute(rw, IndexPage{
-				ShowImage:   false,
-				SassyRemark: SassyRemarks[rand.Intn(len(SassyRemarks))],
-			})
-
-			return
+			result.ShowImage = false
+		} else {
+			result.ShowImage = true
+			result.ImageURL = filenames[rand.Intn(len(filenames))]
 		}
-
-		t.Execute(rw, IndexPage{
-			ShowImage:   true,
-			SassyRemark: SassyRemarks[rand.Intn(len(SassyRemarks))],
-			ImageURL:    filenames[rand.Intn(len(filenames))],
-		})
 	} else {
-		t.Execute(rw, IndexPage{
-			ShowImage:   false,
-			SassyRemark: SassyRemarks[rand.Intn(len(SassyRemarks))],
-		})
+		result.ShowImage = false
 	}
+
+	result.Stamp = fmt.Sprintf("%v | %d files uploaded", time.Since(start), len(files))
+	t.Execute(rw, result)
 }

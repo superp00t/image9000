@@ -1,4 +1,4 @@
-# Image Uploader 9000!
+![logo](web/logo.png)
 
 Freakin' terrible image uploader. Written in Go.
 
@@ -28,3 +28,5 @@ Usage of ./9000server:
   -use-X-Real-IP
     	use the X-Real-IP header, useful for rate limiting behind a reverse proxy.
 ~~~~
+
+An example nginx configuration is located at `example.conf`.

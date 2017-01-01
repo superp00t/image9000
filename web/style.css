@@ -1,11 +1,11 @@
     body {
-        background: #444;
+        background: #333;
         color: #fff;
         font-family: Sans;
     }
 
     h1 {
-        font-family: Helvetica;
+        font-family: Verdana, Geneva, Tahoma, sans-serif;
     }
 
     a {
@@ -27,4 +27,8 @@
 
     #show-img{ 
         max-width: 500px;
+    }
+
+    .footer {
+        font-style: italic;
     }

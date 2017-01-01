@@ -2,18 +2,24 @@
 <head>
     <title>Image Uploader 9000!</title>
     <link rel="stylesheet" href="assets/style.css">
+    <link rel="icon" href="assets/favicon.png">
 </head>
 <body>
 <div class="ctr">
-
+<img src="assets/header.png"/>
+<p class="footer">rendered in {{.Stamp}}</p>
 {{if .ShowImage}}
 <img id="show-img" src="i/{{.ImageURL}}"/>
 {{end}}
 
-<h1>Image Uploader 9000!</h1>
+<p>Tip: {{.SassyRemark}}</p>
 
-<p>{{.SassyRemark}}</p>
-
+<p> Accepted upload formats are: </p>
+<ul>
+{{range $fmt := .AcceptedTypes}}
+ <li>{{$fmt}}</li>
+ {{end}}
+</ul>
 <p> <a href="https://github.com/superp00t/image9000">Source code</a></p>
 <form enctype="multipart/form-data" action="upload" method="POST">
     <input class="button" id="file" name="file" type="file"/>
