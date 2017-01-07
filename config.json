@@ -1,0 +1,51 @@
+{
+    "subpath": "/",
+    "listen": "localhost:8000",
+    "max_file_size": 20971520,
+    "use_X-Real-IP_header": false,
+    "debug": false,
+    "random_img": false,
+    "log_http_requests": true,
+
+    "rate_limit_count": 2,
+    "rate_limit_interval_seconds": 60,
+
+    "accepted_fmt": {
+        "application/ogg": "ogg",
+        "audio/mp3": "mp3",
+        "audio/mpeg": "mp3",
+        "audio/ogg": "ogg",
+        "image/gif": "gif",
+        "image/jpeg": "jpg",
+        "image/png": "png",
+        "text/plain; charset=utf-8": "txt",
+        "text/xml; charset=utf-8": "xml",
+        "video/mp4": "mp4",
+        "video/ogg": "ogv",
+        "video/webm": "webm",
+        "video/x-matroska": "mkv"
+    },
+
+    "accepted_text_fmt": [
+        "css",
+        "obj",
+        "js",
+        "json",
+        "xml",
+        "txt",
+        "sh",
+        "lua",
+        "go"
+    ],
+
+    "sassy_remarks": [
+        "hello darkness my old friend",
+        "don't complain if this doesn't work",
+        "i'm only human, I too make horrible mistakes",
+        "dear god make it stop",
+        "this clearly isn't professional",
+        "holy fuck this uploader sucks",
+        "remember to stop uploading every now and again. uploading for extended periods is unhealthy",
+        "if this doesn't work please open an issue on github"
+    ]
+}

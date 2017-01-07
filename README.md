@@ -1,4 +1,14 @@
-![logo](web/logo.png)
+```
+   ____                      __  __     __             __       
+  /  _/_ _  ___ ____ ____   / / / /__  / /__  ___ ____/ /__ ____
+ _/ //  ' \/ _ `/ _ `/ -_) / /_/ / _ \/ / _ \/ _ `/ _  / -_) __/
+/___/_/_/_/\_,_/\_, /\__/  \____/ .__/_/\___/\_,_/\_,_/\__/_/   
+               /___/           /_/                              
+  ___  ___  ___  ___ 
+ / _ \/ _ \/ _ \/ _ \
+ \_, / // / // / // /
+/___/\___/\___/\___/ 
+```
 
 Freakin' terrible image uploader. Written in Go.
 
@@ -9,24 +19,10 @@ go build 9000server.go
 `
 ### Running the server
 
-~~~~
-Usage of ./9000server:
-  -addr string
-    	host:port format IP address to listen on (default "localhost:8000")
-  -debug
-    	show additional information about what is going on in the server.
-  -logrequests
-    	print all HTTP requests to stdout
-  -maxSize int
-    	the maximum size in bytes a user is allowed to upload (default 20971520)
-  -random-img
-    	display a random image in the folder in the main page (be careful: could be porn)
-  -rateLimit int
-    	the amount of files a user is allowed to upload per minute. (default 8)
-  -subpath string
-    	configure a subdirectory, for use with a reverse proxy (example: ./9000server -subpath=/image9000/) (default "/")
-  -use-X-Real-IP
-    	use the X-Real-IP header, useful for rate limiting behind a reverse proxy.
-~~~~
+```
+$ ./9000server
+```
+
+Special options are located in config.json.
 
 An example nginx configuration is located at `example.conf`.
