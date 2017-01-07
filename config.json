@@ -7,7 +7,7 @@
     "random_img": false,
     "log_http_requests": true,
 
-    "rate_limit_count": 2,
+    "rate_limit_count": 8,
     "rate_limit_interval_seconds": 60,
 
     "accepted_fmt": {
