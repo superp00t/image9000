@@ -12,6 +12,8 @@
 
     "accepted_fmt": {
         "application/ogg": "ogg",
+        "application/zip": "zip",
+        "application/x-gzip": "gz",
         "audio/mp3": "mp3",
         "audio/mpeg": "mp3",
         "audio/ogg": "ogg",
