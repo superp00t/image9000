@@ -2,8 +2,8 @@ package main
 
 import (
 	"bytes"
-	"crypto/sha256"
-	"encoding/hex"
+	crand "crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -21,7 +21,10 @@ import (
 	"time"
 )
 
+const b64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_!"
+
 var (
+	b64Encoding    *base64.Encoding
 	imageExt       *regexp.Regexp
 	postsPerMinute map[string]int64
 	Config         Configuration
@@ -99,10 +102,31 @@ func RateLimiter() {
 	}
 }
 
-func CreateFileId(bt []byte, ext string) string {
-	bytes := sha256.Sum256(bt)
-	sha := hex.EncodeToString(bytes[:])
-	return sha[:14] + "." + ext
+func RandomString(leng int) string {
+	buf := make([]byte, leng)
+	crand.Read(buf)
+	return b64Encoding.EncodeToString(buf)[:leng]
+}
+
+func Exists(path string) bool {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return false
+	}
+
+	return true
+}
+
+func CreateFileId(ext string) string {
+	for x := 4; ; x++ {
+		fname := RandomString(x) + "." + ext
+		if Exists(fname) {
+			Debug("Filename collision detected. Retrying...")
+			time.Sleep(100 * time.Millisecond)
+			continue
+		}
+
+		return fname
+	}
 }
 
 func Log(handler http.Handler) http.Handler {
@@ -219,14 +243,10 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		id := CreateFileId(FileBuf.Bytes(), ext)
-
-		if _, err := os.Stat("i/" + id); os.IsNotExist(err) {
-			Debug(id + " doesn't exist, writing...")
-			err = ioutil.WriteFile("i/"+id, FileBuf.Bytes(), 0666)
-			if err != nil {
-				log.Fatal(err)
-			}
+		id := CreateFileId(ext)
+		err = ioutil.WriteFile("i/"+id, FileBuf.Bytes(), 0666)
+		if err != nil {
+			log.Fatal(err)
 		}
 
 		http.Redirect(rw, r, Config.Subpath+"i/"+id, 301)
@@ -303,6 +323,8 @@ func IndexHTML(rw http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	b64Encoding = base64.NewEncoding(b64)
+
 	cdat, err := ioutil.ReadFile("config.json")
 	if err != nil {
 		log.Fatal("You need a config.json file to run this site.")
