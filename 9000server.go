@@ -19,6 +19,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/gorilla/mux"
 )
 
 const b64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_!"
@@ -50,21 +52,13 @@ type Configuration struct {
 	RateLimitIntervalSeconds int64 `json:"rate_limit_interval_seconds"`
 }
 
-type Req struct {
-	r *http.Request
-}
-
 type IndexPage struct {
 	ShowImage     bool
-	AcceptedTypes []string
+	AcceptedTypes string
 	ImageURL      string
 	SassyRemark   string
 	Stamp         string
-}
-
-type rateLimitNotificationPage struct {
-	IP    string
-	Limit int64
+	FilesUploaded int
 }
 
 type RateLimitReq struct {
@@ -72,12 +66,12 @@ type RateLimitReq struct {
 	Ok chan bool
 }
 
-func (req *Req) IP() string {
+func IP(r *http.Request) string {
 	var ip string
 	if !Config.UseXRealIP {
-		ip = strings.Split(req.r.RemoteAddr, ":")[0]
+		ip = strings.Split(r.RemoteAddr, ":")[0]
 	} else {
-		ip = req.r.Header.Get("X-Real-IP")
+		ip = r.Header.Get("X-Real-IP")
 	}
 
 	return ip
@@ -131,8 +125,7 @@ func CreateFileId(ext string) string {
 
 func Log(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ipr := Req{r}
-		ip := ipr.IP()
+		ip := IP(r)
 
 		if Config.LogHTTPRequests {
 			log.Printf("%s (%s) %s %s\n", ip, r.UserAgent(), r.Method, r.URL)
@@ -145,9 +138,7 @@ func Log(handler http.Handler) http.Handler {
 func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "POST":
-		ipr := Req{r}
-		ip := ipr.IP()
-
+		ip := IP(r)
 		ok := make(chan bool)
 
 		HitFromIP <- RateLimitReq{
@@ -159,18 +150,8 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 
 		if !okay {
 			Debug(ip + " is posting too much. Rate limiting!")
-
 			rw.WriteHeader(http.StatusTooManyRequests)
-
-			t, err := template.ParseFiles("pages/ratelimit.html")
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			t.Execute(rw, rateLimitNotificationPage{
-				IP:    ip,
-				Limit: Config.RateLimitUploadCount,
-			})
+			fmt.Fprintf(rw, "Your IP (%s) has uploaded too many files recently. Please wait and try again.", ip)
 			return
 		}
 
@@ -249,7 +230,7 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 			log.Fatal(err)
 		}
 
-		http.Redirect(rw, r, Config.Subpath+"i/"+id, 301)
+		http.Redirect(rw, r, Config.Subpath+id, 301)
 	default:
 		http.Error(rw, "Bad Request", http.StatusBadRequest)
 	}
@@ -284,6 +265,14 @@ func IndexHTML(rw http.ResponseWriter, r *http.Request) {
 
 	sort.Strings(acc)
 
+	enumer := ""
+
+	for _, v := range acc[:len(acc)-1] {
+		enumer += v + ", "
+	}
+
+	enumer += acc[len(acc)-1]
+
 	rand.Seed(time.Now().UTC().UnixNano())
 
 	t, err := template.ParseFiles("pages/index.html")
@@ -292,7 +281,7 @@ func IndexHTML(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	result.SassyRemark = Config.SassyRemarks[rand.Intn(len(Config.SassyRemarks))]
-	result.AcceptedTypes = acc
+	result.AcceptedTypes = enumer
 
 	var filenames []string
 
@@ -318,7 +307,8 @@ func IndexHTML(rw http.ResponseWriter, r *http.Request) {
 		result.ShowImage = false
 	}
 
-	result.Stamp = fmt.Sprintf("%v | %d files uploaded", time.Since(start), len(files))
+	result.Stamp = fmt.Sprintf("%v", time.Since(start))
+	result.FilesUploaded = len(files)
 	t.Execute(rw, result)
 }
 
@@ -346,13 +336,20 @@ func main() {
 
 	go RateLimiter()
 
-	http.HandleFunc("/", IndexHTML)
-	http.Handle("/assets/", http.StripPrefix("/assets/", http.FileServer(http.Dir("web"))))
-	http.Handle("/i/", http.StripPrefix("/i/", http.FileServer(http.Dir("i"))))
+	r := mux.NewRouter()
+	r.HandleFunc("/", IndexHTML)
+	r.HandleFunc("/upload", UploadHandler)
 
-	http.HandleFunc("/upload", UploadHandler)
+	// Serve files
+	r.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir("web"))))
+
+	iserver := http.FileServer(http.Dir("i"))
+
+	r.PathPrefix("/i/").Handler(http.StripPrefix("/i/", iserver))
+	r.PathPrefix("/{thing}").Handler(iserver)
+
 	log.Printf("Listening at %s\n", Config.Listen)
-	err = http.ListenAndServe(Config.Listen, Log(http.DefaultServeMux))
+	err = http.ListenAndServe(Config.Listen, Log(r))
 	if err != nil {
 		log.Fatal(err)
 	}

@@ -1,34 +1,47 @@
-    body {
-        background: #333;
-        color: #fff;
-        font-family: Sans;
-    }
+            .formbox {
+                display: block;
+                margin: auto;
+                margin-top: 50px;
+                width: 80vw;
+                padding: 16px;
+                color: #000;
+                font-family: Arial, Helvetica, sans-serif;
+            }
 
-    h1 {
-        font-family: Verdana, Geneva, Tahoma, sans-serif;
-    }
+            .formbox form {
+                padding: 20px;
+            }
 
-    a {
-        color: #ccc;
-    }
-    .ctr {
-        display: block;
-        margin: auto;
-        width: 80%;
-        position: relative;
-        top: 30px;
-    }
+            .googly-header {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 60px;
+                margin: 0;
+                padding: 0;
+                background: #303F9F;
+                color: #fff;
 
-    .button {
-        font-style: italic;
-        margin-top: 20px;
-        width: 250px;
-    }
+                box-shadow: 2px 2px 2px #888;
+            }
 
-    #show-img{ 
-        max-width: 500px;
-    }
+            .googly-header .title {
+                margin-left: 9px;
+                margin-top: 14px;
+                font-size: 30px;
+                font-family: Helvetica;
+            }
 
-    .footer {
-        font-style: italic;
-    }
+            .button {
+                width: 200px;
+                height: 40px;
+                background: #303F9F;
+                border-radius: 5px;
+                color: #fff;
+                text-transform: uppercase;
+            }
+
+            .it {
+                margin: 10px;
+            }
