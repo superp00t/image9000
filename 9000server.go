@@ -123,6 +123,12 @@ func CreateFileId(ext string) string {
 	}
 }
 
+func Mp3(buf []byte) bool {
+	return len(buf) > 2 &&
+		((buf[0] == 0x49 && buf[1] == 0x44 && buf[2] == 0x33) ||
+			(buf[0] == 0xFF && buf[1] == 0xfb))
+}
+
 func Log(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ip := IP(r)
@@ -177,7 +183,12 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		FileType := http.DetectContentType(FileBuf.Bytes())
+		var FileType string
+		if filepath.Ext(fileData.Filename)[1:] == "mp3" && Mp3(FileBuf.Bytes()) {
+			FileType = "audio/mp3"
+		} else {
+			FileType = http.DetectContentType(FileBuf.Bytes())
+		}
 
 		Debug(fmt.Sprintf("%d bytes read type %s", wr, FileType))
 
