@@ -20,6 +20,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/NYTimes/gziphandler"
+
 	"github.com/gorilla/mux"
 )
 
@@ -182,18 +184,33 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 			http.Error(rw, err.Error(), http.StatusInternalServerError)
 			return
 		}
-
+		ext := filepath.Ext(fileData.Filename)[1:]
 		var FileType string
-		if filepath.Ext(fileData.Filename)[1:] == "mp3" && Mp3(FileBuf.Bytes()) {
+		if ext == "mp3" && Mp3(FileBuf.Bytes()) {
 			FileType = "audio/mp3"
 		} else {
 			FileType = http.DetectContentType(FileBuf.Bytes())
 		}
 
 		Debug(fmt.Sprintf("%d bytes read type %s", wr, FileType))
+		isSVG := false
+		if strings.HasPrefix(FileType, "text/xml") && ext != "svg" {
+			http.Error(rw, "invalid XML", http.StatusBadRequest)
+			return
+		}
 
-		var ext string
-		ext = Config.AcceptedFmt[FileType]
+		if ext == "svg" {
+			if strings.Contains(FileBuf.String(), "<script") {
+				http.Error(rw, "attempted script svg blocked", http.StatusBadRequest)
+				return
+			}
+			isSVG = true
+		}
+
+		if isSVG == false {
+			ext = Config.AcceptedFmt[FileType]
+		}
+
 		if ext == "" {
 			Debug("Filetype " + FileType + " not supported")
 			http.Error(rw, fmt.Sprintf("File type (%s) not supported.", FileType), http.StatusBadRequest)
@@ -354,7 +371,7 @@ func main() {
 	// Serve files
 	r.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir("web"))))
 
-	iserver := http.FileServer(http.Dir("i"))
+	iserver := gziphandler.GzipHandler(http.FileServer(http.Dir("i")))
 
 	r.PathPrefix("/i/").Handler(http.StripPrefix("/i/", iserver))
 	r.PathPrefix("/{thing}").Handler(iserver)
