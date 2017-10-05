@@ -14,6 +14,7 @@
         "application/ogg": "ogg",
         "application/zip": "zip",
         "application/x-gzip": "gz",
+        "application/pdf": "pdf",
         "audio/mp3": "mp3",
         "audio/mpeg": "mp3",
         "audio/ogg": "ogg",
