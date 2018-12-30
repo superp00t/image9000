@@ -6,11 +6,11 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/superp00t/etc"
 	"html/template"
 	"image/jpeg"
 	"io"
 	"io/ioutil"
-	"log"
 	"math/rand"
 	"net/http"
 	"os"
@@ -23,6 +23,7 @@ import (
 	"github.com/NYTimes/gziphandler"
 
 	"github.com/gorilla/mux"
+	"github.com/superp00t/etc/yo"
 )
 
 const b64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_!"
@@ -136,7 +137,7 @@ func Log(handler http.Handler) http.Handler {
 		ip := IP(r)
 
 		if Config.LogHTTPRequests {
-			log.Printf("%s (%s) %s %s\n", ip, r.UserAgent(), r.Method, r.URL)
+			yo.Printf("%s (%s) %s %s\n", ip, r.UserAgent(), r.Method, r.URL)
 		}
 
 		handler.ServeHTTP(w, r)
@@ -200,8 +201,9 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 		}
 
 		if ext == "svg" {
-			if strings.Contains(FileBuf.String(), "<script") {
-				http.Error(rw, "attempted script svg blocked", http.StatusBadRequest)
+			if strings.Contains(FileBuf.String(), "<script") || strings.Contains(FileBuf.String(), "onload") {
+				yo.Warn("potential XSS from ", IP(r))
+				http.Error(rw, "potential XSS exploit detected", http.StatusBadRequest)
 				return
 			}
 			isSVG = true
@@ -253,9 +255,9 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 		}
 
 		id := CreateFileId(ext)
-		err = ioutil.WriteFile("i/"+id, FileBuf.Bytes(), 0666)
+		err = ioutil.WriteFile(directory.Concat("i", id).Render(), FileBuf.Bytes(), 0666)
 		if err != nil {
-			log.Fatal(err)
+			yo.Fatal(err)
 		}
 
 		http.Redirect(rw, r, Config.Subpath+id, 301)
@@ -266,7 +268,7 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 
 func Debug(str string) {
 	if Config.Debug {
-		log.Println(str)
+		yo.Println(str)
 	}
 }
 
@@ -303,19 +305,16 @@ func IndexHTML(rw http.ResponseWriter, r *http.Request) {
 
 	rand.Seed(time.Now().UTC().UnixNano())
 
-	t, err := template.ParseFiles("pages/index.html")
-	if err != nil {
-		log.Fatal(err)
-	}
+	t := loadTpl("index.html")
 
 	result.SassyRemark = Config.SassyRemarks[rand.Intn(len(Config.SassyRemarks))]
 	result.AcceptedTypes = enumer
 
 	var filenames []string
 
-	files, err := ioutil.ReadDir("i/")
+	files, err := ioutil.ReadDir(directory.Concat("i").Render())
 	if err != nil {
-		log.Fatal(err)
+		yo.Fatal(err)
 	}
 
 	if Config.ShowRandomImage {
@@ -340,26 +339,66 @@ func IndexHTML(rw http.ResponseWriter, r *http.Request) {
 	t.Execute(rw, result)
 }
 
+var directory etc.Path
+
 func main() {
+	yo.AddSubroutine("run", []string{"directory"}, "a terribly engineered file hosting service.", srvMain)
+	yo.Init()
+}
+
+func srvMain(args []string) {
+	dir := ""
+	if args[0] == "" {
+		var err error
+		dir, err = os.Getwd()
+		if err != nil {
+			yo.Fatal(err)
+		}
+	} else {
+		dir = args[0]
+	}
+
+	directory = etc.ParseSystemPath(dir)
+	if !directory.IsExtant() {
+		err := os.MkdirAll(dir, 0700)
+		if err != nil {
+			yo.Fatal(err)
+		}
+	}
+
 	b64Encoding = base64.NewEncoding(b64)
 
-	cdat, err := ioutil.ReadFile("config.json")
+	if directory.Exists("config.json") == false {
+		data, _ := Asset("config.json")
+
+		yo.Ok("No config.json found, creating...")
+
+		err := ioutil.WriteFile(directory.Concat("config.json").Render(), data, 0700)
+		if err != nil {
+			yo.Fatal(err)
+		}
+	}
+
+	cdat, err := ioutil.ReadFile(directory.Concat("config.json").Render())
 	if err != nil {
-		log.Fatal("You need a config.json file to run this site.")
+		yo.Fatal("You need a config.json file to run this site.")
 	}
 
 	err = json.Unmarshal(cdat, &Config)
 	if err != nil {
-		log.Fatal(err)
+		yo.Fatal(err)
 	}
 
 	imageExt, err = regexp.Compile("(?i).(jpg|jpeg|png|gif)$")
 	if err != nil {
-		log.Fatal(err)
+		yo.Fatal(err)
 	}
 
-	if _, err := os.Stat("i"); os.IsNotExist(err) {
-		os.Mkdir("i", 0700)
+	if !directory.Exists("i") {
+		yo.Ok("No i directory found. Creating...")
+		if err := os.MkdirAll(directory.Concat("i").Render(), 0700); err != nil {
+			yo.Fatal(err)
+		}
 	}
 
 	go RateLimiter()
@@ -369,16 +408,67 @@ func main() {
 	r.HandleFunc("/upload", UploadHandler)
 
 	// Serve files
-	r.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(http.Dir("web"))))
+	r.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(assetFS())))
 
-	iserver := gziphandler.GzipHandler(http.FileServer(http.Dir("i")))
+	iserver := gziphandler.GzipHandler(http.FileServer(http.Dir(directory.Concat("i").Render())))
 
 	r.PathPrefix("/i/").Handler(http.StripPrefix("/i/", iserver))
-	r.PathPrefix("/{thing}").Handler(iserver)
+	is := new(_iserver)
+	is.relay = iserver
+	r.PathPrefix("/{thing}").Handler(is)
 
-	log.Printf("Listening at %s\n", Config.Listen)
-	err = http.ListenAndServe(Config.Listen, Log(r))
-	if err != nil {
-		log.Fatal(err)
+	yo.Printf("Listening at %s\n", Config.Listen)
+	yo.Fatal(http.ListenAndServe(Config.Listen, Log(r)))
+}
+
+type VisitorData struct {
+	Archive bool   `json:"archive"`
+	Content string `json:"content"`
+}
+
+type VisitorPage struct {
+	Filename string
+	Metadata template.JS
+}
+
+type _iserver struct {
+	relay http.Handler
+}
+
+func (i *_iserver) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
+	thing := mux.Vars(r)["thing"]
+	yo.Ok(thing)
+
+	if ext := filepath.Ext(thing); ext != "" {
+		yo.Ok("Filtering ext", ext)
+		switch ext {
+		case ".gz", ".zip":
+			i.openVisitor(rw, r, VisitorData{Content: thing, Archive: true})
+			return
+		}
 	}
+
+	i.relay.ServeHTTP(rw, r)
+}
+
+func loadTpl(name string) *template.Template {
+	tpl, _ := Asset("assets/" + name)
+	t, err := template.New("").Parse(string(tpl))
+	if err != nil {
+		panic(err)
+	}
+
+	return t
+}
+
+func (i *_iserver) openVisitor(rw http.ResponseWriter, r *http.Request, data VisitorData) {
+	yo.Ok("opening visitor menu")
+	yo.Spew(data)
+
+	encoded, _ := json.Marshal(data)
+	t := loadTpl("visitor.html")
+	t.Execute(rw, VisitorPage{
+		Filename: data.Content,
+		Metadata: template.JS(encoded),
+	})
 }

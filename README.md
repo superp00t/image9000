@@ -1,28 +1,19 @@
-```
-   ____                      __  __     __             __       
-  /  _/_ _  ___ ____ ____   / / / /__  / /__  ___ ____/ /__ ____
- _/ //  ' \/ _ `/ _ `/ -_) / /_/ / _ \/ / _ \/ _ `/ _  / -_) __/
-/___/_/_/_/\_,_/\_, /\__/  \____/ .__/_/\___/\_,_/\_,_/\__/_/   
-               /___/           /_/                              
-  ___  ___  ___  ___ 
- / _ \/ _ \/ _ \/ _ \
- \_, / // / // / // /
-/___/\___/\___/\___/ 
-```
+![img9k](cmd/img9k/assets/logo.png)
 
-Freakin' terrible image uploader. Written in Go.
+Fucking garbage image hosting server. Abandon hope, all ye who use this software.
 
 ### Building
 
-`
-go build 9000server.go
-`
+```bash
+go get -u -v github.com/superp00t/image9000/cmd/img9k
+```
+
 ### Running the server
 
-```
-$ ./9000server
+```bash
+img9k run <dir which contains config.json and /i/>
 ```
 
-Special options are located in config.json.
+Special options are located in config.json. If you don't have a Image9000 directory and config.json, `img9k run` will create one for you automatically.
 
 An example nginx configuration is located at `example.conf`.

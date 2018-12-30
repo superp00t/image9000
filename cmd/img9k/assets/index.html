@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>IMG9K</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="assets/home.js"></script>
+  <link rel="stylesheet" type="text/css" media="screen" href="assets/main.css" />
+  <link rel="stylesheet" type="text/css" media="screen" href="assets/cssProgress.css" />
+</head>
+<body>
+  <div class="centralCard">
+    <h1 class="logo">Image9000 File Host</h1>
+    <a href="https://github.com/superp00t/image9000">Source code</a>
+
+    <p>This server currently is hosting {{.FilesUploaded}} files.</p>
+
+    <i>Tip: {{.SassyRemark}}</i>
+
+    <form id="remove-on-js" enctype="multipart/form-data" action="upload" method="POST">
+			<input class="it" id="file" name="file" type="file" required/>
+      <br/>
+      
+			<input class="button it" id="submit" type="submit" value="upload" />
+		</form>
+  </div>
+</body>
+</html>

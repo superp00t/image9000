@@ -1,0 +1,66 @@
+@font-face{
+  font-family: "Script";
+  src: url("script.ttf");
+}
+
+html {
+  height: 100vh;
+}
+
+body {
+  background: repeating-linear-gradient(
+  -45deg,
+  #a3cde6,
+  #a3cde6 10px,
+  #82aabd 10px,
+  #82aabd 20px
+);
+}
+
+.centralCard {
+  display: block;
+  margin: auto;
+  
+  width:  400px;
+  margin-top: 20vh;
+  min-height: 256px;
+  border-radius: 8px;
+  padding: 20px;
+  background: #FFFFFF;
+  box-shadow: 6.5px 6.5px 6.5px rgba(0, 0, 0, .3);
+}
+
+.logo {
+  color: #483742;
+  font-family: "Script";
+  font-weight: normal;
+  font-size: 50px;
+  margin-top: 0px;
+  margin-bottom: 20px;
+}
+
+.centralCard > * {
+}
+
+.centralCard > p, a, li, i {
+  display: block;
+  font-family: "Arial";
+}
+
+.dragDiv {
+  display: flex;
+  margin: auto;
+  margin-top: 30px;
+  width:  95%;
+  height: 100px;
+  border: 2px dashed #82aabd;
+}
+
+.dragDiv > .help {
+  pointer-events: none;
+  user-select: none;
+  display: block;
+  margin: auto;
+  color: #666;
+  font-family: "Arial";
+}
