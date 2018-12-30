@@ -8,7 +8,7 @@ window.addEventListener("resize", function() {
 
 function update() {
   if (window.innerWidth < 500) {
-    q(".centralCard").style = "width: 84vw; margin-top: 60px;";
+    q(".centralCard").style = "width: 84vw; margin-top: 20px;";
   } else {
     q(".centralCard").style = "";
   }
