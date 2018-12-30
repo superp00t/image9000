@@ -64,3 +64,10 @@ body {
   color: #666;
   font-family: "Arial";
 }
+
+.copy {
+  text-align: right;
+  margin-bottom: 0px;
+  font-size: 12px;
+  color: #444;
+}

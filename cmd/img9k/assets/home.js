@@ -30,7 +30,7 @@ i9k.setup = function() {
   help.setAttribute("class", "help");
   help.innerText = i9k.dragDefault;
 
-  q(".centralCard").innerHTML += `<input id="proxyFile" type="file" style="visibility:hidden" />`;
+  q(".centralCard").innerHTML += `<input id="proxyFile" type="file" style="visibility:hidden" /><p class="copy">© 2018 Joshua Achorn</p>`;
   
   var pf = q("#proxyFile");
   pf.addEventListener("change", function(files) {
