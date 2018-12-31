@@ -64,9 +64,30 @@ body {
   font-family: "Arial";
 }
 
+.info {
+  margin-top: 10px;
+  width: 100%;
+  display: inline-block;
+}
+
+.info > * {
+  margin: 5px 10px 0 0;
+  float: left;
+  clear: right;
+}
+
 .copy {
-  text-align: right;
-  margin-bottom: 0px;
+  font-family: "Arial";
+  float: right;
   font-size: 12px;
   color: #444;
+}
+
+.abuse {
+  font-size: 12px;
+  color: #444;
+}
+
+a:visited {
+  color: #0e3f5c;
 }

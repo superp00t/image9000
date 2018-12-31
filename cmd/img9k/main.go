@@ -54,15 +54,19 @@ type Configuration struct {
 	LogHTTPRequests          bool  `json:"log_http_requests"`
 	RateLimitUploadCount     int64 `json:"rate_limit_count"`
 	RateLimitIntervalSeconds int64 `json:"rate_limit_interval_seconds"`
+
+	AbuseReportURL string `json:"abuse_report_url"`
 }
 
 type IndexPage struct {
-	ShowImage     bool
-	AcceptedTypes string
-	ImageURL      string
-	SassyRemark   string
-	Stamp         string
-	FilesUploaded int
+	Config         template.JS
+	AbuseReportURL string
+	ShowImage      bool
+	AcceptedTypes  string
+	ImageURL       string
+	SassyRemark    string
+	Stamp          string
+	FilesUploaded  int
 }
 
 type RateLimitReq struct {
@@ -338,9 +342,38 @@ func IndexHTML(rw http.ResponseWriter, r *http.Request) {
 		result.ShowImage = false
 	}
 
+	arr, _ := json.Marshal(Config.AcceptedTextFmt)
+	afm, _ := json.Marshal(Config.AcceptedFmt)
+
+	result.Config = template.JS(fmt.Sprintf("{maxFileSize:%d,acceptedTextFmt:%s,acceptedFmt:%s}", Config.MaxSize, arr, afm))
+	result.AbuseReportURL = Config.AbuseReportURL
 	result.Stamp = fmt.Sprintf("%v", time.Since(start))
 	result.FilesUploaded = len(files)
-	t.Execute(rw, result)
+	exe(t, rw, result)
+}
+
+type proxyWriter struct {
+	w io.Writer
+}
+
+func (p *proxyWriter) Write(b []byte) (int, error) {
+	ln := len(b)
+	n := []byte{}
+
+	for _, v := range b {
+		if v != '\t' && v != '\n' && v != '\r' {
+			n = append(n, v)
+		}
+	}
+
+	_, err := p.w.Write(n)
+	return ln, err
+}
+
+func exe(t *template.Template, w io.Writer, v interface{}) {
+	pw := &proxyWriter{w}
+
+	t.Execute(pw, v)
 }
 
 var directory etc.Path
@@ -466,10 +499,9 @@ func loadTpl(name string) *template.Template {
 }
 
 func (i *_iserver) openVisitor(rw http.ResponseWriter, r *http.Request, data VisitorData) {
-
 	encoded, _ := json.Marshal(data)
 	t := loadTpl("visitor.html")
-	t.Execute(rw, VisitorPage{
+	exe(t, rw, VisitorPage{
 		Filename: data.Content,
 		Metadata: template.JS(encoded),
 	})

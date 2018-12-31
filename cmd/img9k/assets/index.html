@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <meta charset="utf-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -7,27 +8,37 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script src="assets/home.js"></script>
   <script src="assets/ui.js"></script>
+  <script>if (!window.i9k) { window.i9k = {}; } i9k.cfg = {{.Config }}</script>
   <link rel="icon" type="image/png" href="assets/favicon.png" />
   <link rel="stylesheet" type="text/css" media="screen" href="assets/main.css" />
   <link rel="stylesheet" type="text/css" media="screen" href="assets/cssProgress.css" />
 </head>
+
 <body>
+  <a href="https://github.com/superp00t/image9000" id="ribbon" style="display: none">
+    <img style="position: absolute; top: 0; right: 0; border: 0;" src="assets/forkme.png"
+      alt="Fork me on GitHub">
+  </a>
   <div class="centralCard">
     <h1 class="logo">Image9000 File Host</h1>
-    <a href="https://github.com/superp00t/image9000">Source code</a>
+    <a href="https://github.com/superp00t/image9000/issues">Report bugs / make suggestions</a>
 
     <p>This server currently is hosting {{.FilesUploaded}} files.</p>
 
     <i>Tip: {{.SassyRemark}}</i>
-
     <form id="remove-on-js" enctype="multipart/form-data" action="upload" method="POST">
-			<input class="it" id="file" name="file" type="file" required/>
+      <input class="it" id="file" name="file" type="file" required/>
       <br/>
-      
-			<input class="button it" id="submit" type="submit" value="upload" />
+      <input class="button it" id="submit" type="submit" value="upload" />
     </form>
     <input id="proxyFile" type="file" style="visibility:hidden" />
-    <p class="copy">© 2018 Joshua Achorn</p>
+    <div class="info">
+      {{if .AbuseReportURL}}
+      <a class="abuse" href="{{.AbuseReportURL}}">Report abuse</a>
+      {{end}}
+      <p class="copy">© 2018 Joshua Achorn</p>
+    </div>
   </div>
 </body>
+
 </html>

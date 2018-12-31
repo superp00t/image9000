@@ -1,4 +1,7 @@
-window.i9k = {};
+if (!window.i9k) {
+  window.i9k = {};
+}
+
 window.onpopstate = function(event) {
   if(event && event.state) {
     location.reload(); 
@@ -24,7 +27,7 @@ i9k.setup = function() {
   // Bind drag-n-drop
   var dragDiv = document.createElement("div");
   dragDiv.setAttribute("class", "dragDiv");
-  q(".centralCard").insertBefore(dragDiv, q(".copy"));
+  q(".centralCard").insertBefore(dragDiv, q(".info"));
 
   var help = document.createElement("p");
   help.setAttribute("class", "help");
@@ -89,7 +92,7 @@ i9k.beginUpload = function(file) {
 
   q(".centralCard").insertBefore(
     new DOMParser().parseFromString(progBar, "text/html").body.childNodes[0],
-    q(".copy")
+    q(".info")
   );
 
   var fData = new FormData();
