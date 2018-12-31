@@ -8,8 +8,8 @@ window.addEventListener("resize", function() {
 
 function update() {
   if (window.innerWidth < 500) {
-    q(".centralCard").style = "width: 84vw; margin-top: 20px;";
+    document.querySelector(".centralCard").style = "width: 84vw; margin-top: 20px;";
   } else {
-    q(".centralCard").style = "";
+    document.querySelector(".centralCard").style = "";
   }
 }

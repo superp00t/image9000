@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/superp00t/etc"
 	"html/template"
 	"image/jpeg"
 	"io"
@@ -19,6 +18,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/superp00t/etc"
 
 	"github.com/NYTimes/gziphandler"
 
@@ -182,7 +183,7 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 
 		wr, err := io.Copy(&FileBuf, file)
 		if err != nil {
-			http.Error(rw, err.Error(), http.StatusInternalServerError)
+			hterr(rw, err)
 			return
 		}
 		ext := filepath.Ext(fileData.Filename)[1:]
@@ -204,6 +205,7 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 			if strings.Contains(FileBuf.String(), "<script") || strings.Contains(FileBuf.String(), "onload") {
 				yo.Warn("potential XSS from ", IP(r))
 				http.Error(rw, "potential XSS exploit detected", http.StatusBadRequest)
+				hterr(rw, fmt.Errorf("potential XSS exploit detected"))
 				return
 			}
 			isSVG = true
@@ -215,7 +217,7 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 
 		if ext == "" {
 			Debug("Filetype " + FileType + " not supported")
-			http.Error(rw, fmt.Sprintf("File type (%s) not supported.", FileType), http.StatusBadRequest)
+			hterr(rw, fmt.Errorf("File type (%s) not supported.", FileType))
 			return
 		}
 
@@ -232,7 +234,7 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 
 			if !okay {
 				Debug("Text type " + ext + " not supported")
-				http.Error(rw, fmt.Sprintf("Text type (%s) not supported.", ext), http.StatusBadRequest)
+				hterr(rw, fmt.Errorf("Text type (%s) not supported.", ext))
 				return
 			}
 		}
@@ -241,7 +243,7 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 			Debug("JPEG detected, re-encoding to remove harmful metadata")
 			img, err := jpeg.Decode(&FileBuf)
 			if err != nil {
-				http.Error(rw, err.Error(), http.StatusBadRequest)
+				hterr(rw, err)
 				return
 			}
 
@@ -249,7 +251,7 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 
 			err = jpeg.Encode(&FileBuf, img, &jpeg.Options{Quality: 90})
 			if err != nil {
-				http.Error(rw, err.Error(), http.StatusBadRequest)
+				hterr(rw, err)
 				return
 			}
 		}
@@ -257,7 +259,9 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 		id := CreateFileId(ext)
 		err = ioutil.WriteFile(directory.Concat("i", id).Render(), FileBuf.Bytes(), 0666)
 		if err != nil {
-			yo.Fatal(err)
+			yo.Warn(err)
+			hterr(rw, fmt.Errorf("Could not write your file. Perhaps the server ran out of storage space."))
+			return
 		}
 
 		http.Redirect(rw, r, Config.Subpath+id, 301)
@@ -462,8 +466,6 @@ func loadTpl(name string) *template.Template {
 }
 
 func (i *_iserver) openVisitor(rw http.ResponseWriter, r *http.Request, data VisitorData) {
-	yo.Ok("opening visitor menu")
-	yo.Spew(data)
 
 	encoded, _ := json.Marshal(data)
 	t := loadTpl("visitor.html")
@@ -471,4 +473,9 @@ func (i *_iserver) openVisitor(rw http.ResponseWriter, r *http.Request, data Vis
 		Filename: data.Content,
 		Metadata: template.JS(encoded),
 	})
+}
+
+func hterr(rw http.ResponseWriter, err error) {
+	rw.WriteHeader(400)
+	rw.Write([]byte(err.Error()))
 }

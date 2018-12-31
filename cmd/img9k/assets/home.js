@@ -24,14 +24,12 @@ i9k.setup = function() {
   // Bind drag-n-drop
   var dragDiv = document.createElement("div");
   dragDiv.setAttribute("class", "dragDiv");
-  q(".centralCard").appendChild(dragDiv);
+  q(".centralCard").insertBefore(dragDiv, q(".copy"));
 
   var help = document.createElement("p");
   help.setAttribute("class", "help");
   help.innerText = i9k.dragDefault;
 
-  q(".centralCard").innerHTML += `<input id="proxyFile" type="file" style="visibility:hidden" /><p class="copy">© 2018 Joshua Achorn</p>`;
-  
   var pf = q("#proxyFile");
   pf.addEventListener("change", function(files) {
     if (pf.files.length !== 1) {
@@ -51,7 +49,6 @@ i9k.setup = function() {
   document.body.addEventListener("dragover dragenter dragleave drop drag", function(ev) {
     ev.preventDefault();
   });
-
 
   var sel = ".dragDiv";
   a(sel).on("dragover", function(e) {
@@ -84,12 +81,16 @@ i9k.dropEvent = function(evt) {
 
 i9k.beginUpload = function(file) {
   q(".dragDiv").style = "display: none;";
-  q(".centralCard").innerHTML
-+= `<div class="cssProgress">
+  const progBar = `<div class="cssProgress">
     <div class="progress3">
       <div class="cssProgress-bar cssProgress-active-right" data-percent="0" style="width: 0%;"><span class="cssProgress-label">0%</span> </div>
     </div>
    </div>`
+
+  q(".centralCard").insertBefore(
+    new DOMParser().parseFromString(progBar, "text/html").body.childNodes[0],
+    q(".copy")
+  );
 
   var fData = new FormData();
   fData.append("file", file);
