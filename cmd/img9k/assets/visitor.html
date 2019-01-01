@@ -7,13 +7,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/png" href="assets/favicon.png" />
   <link rel="stylesheet" type="text/css" media="screen" href="/assets/main.css" />
+  <script src="assets/purify.min.js"></script>
+  <script src="assets/superp00t-etc.min.js"></script>
   <script src="assets/ui.js"></script>
+  <script src="assets/visitor.js"></script>
   <script>window.img9k={{.Metadata}}</script> 
 </head>
 <body>
   <div class="centralCard">
     <h1 class="logo">{{.Filename}}</h1>
-    <a href="i/{{.Filename}}">Download</a>
+    <a target="_blank" id="downloadURL" href="i/{{.Filename}}">Download</a>
   </div>
 </body>
 </html>

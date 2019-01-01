@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	crand "crypto/rand"
 	"encoding/base64"
 	"encoding/json"
@@ -54,8 +53,13 @@ type Configuration struct {
 	LogHTTPRequests          bool  `json:"log_http_requests"`
 	RateLimitUploadCount     int64 `json:"rate_limit_count"`
 	RateLimitIntervalSeconds int64 `json:"rate_limit_interval_seconds"`
+	EncryptedFileLifetime    int64 `json:"encrypted_file_lifetime_minutes"`
 
 	AbuseReportURL string `json:"abuse_report_url"`
+}
+
+func (c Configuration) GetLifetime() time.Duration {
+	return time.Duration(c.EncryptedFileLifetime) * time.Minute
 }
 
 type IndexPage struct {
@@ -174,7 +178,14 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 		file, fileData, err := r.FormFile("file")
 
 		if err != nil {
-			http.Error(rw, err.Error(), http.StatusRequestEntityTooLarge)
+			hterr(rw, err)
+			return
+		}
+
+		FileType := fileData.Header.Get("Content-Type")
+
+		if strings.HasSuffix(fileData.Filename, ".i9k") && r.URL.Query().Get("x") != "1" {
+			hterr(rw, fmt.Errorf("you cannot upload this type"))
 			return
 		}
 
@@ -183,40 +194,24 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		var FileBuf bytes.Buffer
+		var rd io.Reader = file
+		ext := Config.AcceptedFmt[FileType]
 
-		wr, err := io.Copy(&FileBuf, file)
-		if err != nil {
-			hterr(rw, err)
-			return
-		}
-		ext := filepath.Ext(fileData.Filename)[1:]
-		var FileType string
-		if ext == "mp3" && Mp3(FileBuf.Bytes()) {
-			FileType = "audio/mp3"
-		} else {
-			FileType = http.DetectContentType(FileBuf.Bytes())
-		}
-
-		Debug(fmt.Sprintf("%d bytes read type %s", wr, FileType))
-		isSVG := false
 		if strings.HasPrefix(FileType, "text/xml") && ext != "svg" {
 			http.Error(rw, "invalid XML", http.StatusBadRequest)
 			return
 		}
 
 		if ext == "svg" {
-			if strings.Contains(FileBuf.String(), "<script") || strings.Contains(FileBuf.String(), "onload") {
+			fileBuf := etc.NewBuffer()
+			io.Copy(fileBuf, file)
+			if strings.Contains(fileBuf.ToString(), "<script") || strings.Contains(fileBuf.ToString(), "onload") {
 				yo.Warn("potential XSS from ", IP(r))
 				http.Error(rw, "potential XSS exploit detected", http.StatusBadRequest)
 				hterr(rw, fmt.Errorf("potential XSS exploit detected"))
 				return
 			}
-			isSVG = true
-		}
-
-		if isSVG == false {
-			ext = Config.AcceptedFmt[FileType]
+			rd = fileBuf
 		}
 
 		if ext == "" {
@@ -245,23 +240,30 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 
 		if FileType == "image/jpeg" {
 			Debug("JPEG detected, re-encoding to remove harmful metadata")
-			img, err := jpeg.Decode(&FileBuf)
+			img, err := jpeg.Decode(rd)
 			if err != nil {
 				hterr(rw, err)
 				return
 			}
 
-			FileBuf = bytes.Buffer{}
+			out := etc.NewBuffer()
 
-			err = jpeg.Encode(&FileBuf, img, &jpeg.Options{Quality: 90})
+			err = jpeg.Encode(out, img, &jpeg.Options{Quality: 90})
 			if err != nil {
 				hterr(rw, err)
 				return
 			}
+			rd = out
 		}
 
 		id := CreateFileId(ext)
-		err = ioutil.WriteFile(directory.Concat("i", id).Render(), FileBuf.Bytes(), 0666)
+
+		diskfile, err := etc.FileController(directory.Concat("i", id).Render())
+		if err != nil {
+			panic(err)
+		}
+
+		_, err = io.Copy(diskfile, rd)
 		if err != nil {
 			yo.Warn(err)
 			hterr(rw, fmt.Errorf("Could not write your file. Perhaps the server ran out of storage space."))
@@ -406,7 +408,7 @@ func srvMain(args []string) {
 	b64Encoding = base64.NewEncoding(b64)
 
 	if directory.Exists("config.json") == false {
-		data, _ := Asset("config.json")
+		data, _ := Asset("assets/config.json")
 
 		yo.Ok("No config.json found, creating...")
 
@@ -438,6 +440,7 @@ func srvMain(args []string) {
 		}
 	}
 
+	go sweep()
 	go RateLimiter()
 
 	r := mux.NewRouter()
@@ -476,9 +479,21 @@ func (i *_iserver) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	thing := mux.Vars(r)["thing"]
 	yo.Ok(thing)
 
+	if strings.Contains(thing, "/") || strings.Contains(thing, "..") {
+		return
+	}
+
+	if directory.Concat("i").Exists(thing) == false {
+		http.Error(rw, "404 not found", 404)
+		return
+	}
+
 	if ext := filepath.Ext(thing); ext != "" {
 		yo.Ok("Filtering ext", ext)
 		switch ext {
+		case ".i9k":
+			i.openVisitor(rw, r, VisitorData{Content: thing})
+			return
 		case ".gz", ".zip":
 			i.openVisitor(rw, r, VisitorData{Content: thing, Archive: true})
 			return
@@ -510,4 +525,24 @@ func (i *_iserver) openVisitor(rw http.ResponseWriter, r *http.Request, data Vis
 func hterr(rw http.ResponseWriter, err error) {
 	rw.WriteHeader(400)
 	rw.Write([]byte(err.Error()))
+}
+
+func sweep() {
+	for {
+		dirs, err := ioutil.ReadDir(directory.Concat("i").Render())
+		if err != nil {
+			yo.Fatal(err)
+		}
+
+		for _, dir := range dirs {
+			if strings.HasSuffix(dir.Name(), ".i9k") {
+				if time.Since(dir.ModTime()) > Config.GetLifetime() {
+					err := os.Remove(directory.Concat("i", dir.Name()).Render())
+					if err != nil {
+						yo.Fatal(err)
+					}
+				}
+			}
+		}
+	}
 }

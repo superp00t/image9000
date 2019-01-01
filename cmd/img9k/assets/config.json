@@ -10,7 +10,10 @@
     "rate_limit_count": 8,
     "rate_limit_interval_seconds": 60,
 
+    "encrypted_file_lifetime_minutes": 60,
+
     "accepted_fmt": {
+        "application/octet-stream": "i9k",
         "application/ogg": "ogg",
         "application/zip": "zip",
         "application/x-gzip": "gz",
@@ -21,6 +24,7 @@
         "image/gif": "gif",
         "image/jpeg": "jpg",
         "image/png": "png",
+        "image/svg+xml": "svg",
         "text/plain; charset=utf-8": "txt",
         "text/xml; charset=utf-8": "xml",
         "video/mp4": "mp4",

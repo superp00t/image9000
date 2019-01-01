@@ -91,3 +91,15 @@ body {
 a:visited {
   color: #0e3f5c;
 }
+
+.check {
+  margin-bottom: 12px;
+}
+
+.check > label {
+  font-family: "Arial";
+}
+
+.content > * {
+  max-width: 100%;
+}
