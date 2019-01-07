@@ -454,6 +454,7 @@ func srvMain(args []string) {
 
 	r := mux.NewRouter()
 	r.HandleFunc("/", IndexHTML)
+	r.HandleFunc("/index.html", IndexHTML)
 	r.HandleFunc("/upload", UploadHandler)
 
 	// Serve files
