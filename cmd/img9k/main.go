@@ -493,6 +493,7 @@ func (i *_iserver) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	if directory.Concat("i").Exists(thing) == false {
+		yo.Warn("Thing", thing, "does not exist")
 		http.Error(rw, "404 not found", 404)
 		return
 	}
