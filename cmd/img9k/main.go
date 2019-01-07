@@ -322,10 +322,7 @@ func IndexHTML(rw http.ResponseWriter, r *http.Request) {
 
 	var filenames []string
 
-	files, err := ioutil.ReadDir(directory.Concat("i").Render())
-	if err != nil {
-		yo.Fatal(err)
-	}
+	files := readImgDir()
 
 	if Config.ShowRandomImage {
 		for _, file := range files {
@@ -529,10 +526,7 @@ func hterr(rw http.ResponseWriter, err error) {
 
 func sweep() {
 	for {
-		dirs, err := ioutil.ReadDir(directory.Concat("i").Render())
-		if err != nil {
-			yo.Fatal(err)
-		}
+		dirs := readImgDir()
 
 		for _, dir := range dirs {
 			if strings.HasSuffix(dir.Name(), ".i9k") {
@@ -545,4 +539,16 @@ func sweep() {
 			}
 		}
 	}
+}
+
+func readImgDir() []os.FileInfo {
+	dir := directory.Concat("i").Render()
+	yo.Warn("reading directory", dir)
+
+	dirs, err := ioutil.ReadDir(dir)
+	if err != nil {
+		panic(err)
+	}
+
+	return dirs
 }
