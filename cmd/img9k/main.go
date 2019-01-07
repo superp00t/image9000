@@ -351,7 +351,7 @@ func IndexHTML(rw http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	result.TotalSize = datasize.ByteSize(totalSize).String()
+	result.TotalSize = datasize.ByteSize(totalSize).HumanReadable()
 
 	arr, _ := json.Marshal(Config.AcceptedTextFmt)
 	afm, _ := json.Marshal(Config.AcceptedFmt)
