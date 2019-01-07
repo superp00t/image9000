@@ -22,6 +22,7 @@ import (
 
 	"github.com/NYTimes/gziphandler"
 
+	"github.com/c2h5oh/datasize"
 	"github.com/gorilla/mux"
 	"github.com/superp00t/etc/yo"
 )
@@ -71,6 +72,7 @@ type IndexPage struct {
 	SassyRemark    string
 	Stamp          string
 	FilesUploaded  int
+	TotalSize      string
 }
 
 type RateLimitReq struct {
@@ -341,6 +343,16 @@ func IndexHTML(rw http.ResponseWriter, r *http.Request) {
 		result.ShowImage = false
 	}
 
+	totalSize := int64(0)
+
+	for _, i := range files {
+		if i.IsDir() == false {
+			totalSize += i.Size()
+		}
+	}
+
+	result.TotalSize = datasize.ByteSize(totalSize).String()
+
 	arr, _ := json.Marshal(Config.AcceptedTextFmt)
 	afm, _ := json.Marshal(Config.AcceptedFmt)
 
@@ -547,10 +559,15 @@ func readImgDir() []os.FileInfo {
 	dir := directory.Concat("i", "").Render()
 	yo.Warn("reading directory", dir)
 
-	dirs, err := ioutil.ReadDir(dir)
-	if err != nil {
-		panic(err)
-	}
+	for {
+		dirs, err := ioutil.ReadDir(dir)
+		if err != nil {
+			if err.Error() == "readdirent: no such file or directory" {
+				yo.Warn(err)
+				continue
+			}
+		}
 
-	return dirs
+		return dirs
+	}
 }
