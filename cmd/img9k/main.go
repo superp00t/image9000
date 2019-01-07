@@ -538,11 +538,13 @@ func sweep() {
 				}
 			}
 		}
+
+		time.Sleep(120 * time.Second)
 	}
 }
 
 func readImgDir() []os.FileInfo {
-	dir := directory.Concat("i").Render()
+	dir := directory.Concat("i", "").Render()
 	yo.Warn("reading directory", dir)
 
 	dirs, err := ioutil.ReadDir(dir)
