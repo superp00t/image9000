@@ -272,7 +272,9 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 			panic(err)
 		}
 
-		_, err = io.Copy(diskfile, rd)
+		tmpBuffer := make([]byte, int(4*datasize.MB))
+
+		_, err = io.CopyBuffer(diskfile, rd, tmpBuffer)
 		if err != nil {
 			yo.Warn(err)
 			hterr(rw, fmt.Errorf("Could not write your file. Perhaps the server ran out of storage space."))
