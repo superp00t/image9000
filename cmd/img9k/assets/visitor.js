@@ -36,6 +36,7 @@ window.addEventListener("load", () => {
       var ext = "bin"
 
       var process = {
+        "application/x-zip-compressed": [false, "dl", "zip"],
         "application/zip": [false, "dl", "zip"],
         "application/gzip": [false, "dl", "gz"],
         "image/svg+xml": [true, "img",  "svg"],
@@ -47,12 +48,11 @@ window.addEventListener("load", () => {
         "audio/ogg":        [false, "audio", "ogg"],
         "audio/mpeg":        [false, "audio", "mp3"],
         "audio/mp3":        [false, "audio", "mp3"],
+        "audio/flac":        [false, "audio", "flac"],
         "audio/wav":        [false, "audio", "wav"],
         "application/xml":  [true, "dl", "xml"],
         "text/html":        [true, "dl", "html"]
       }
-
-      var ext = "dat";
 
       if (!process[mimeType]) {
         mimeType = "application/octet-stream";

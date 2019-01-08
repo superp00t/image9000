@@ -186,6 +186,8 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 
 		FileType := fileData.Header.Get("Content-Type")
 
+		encrypted := strings.HasSuffix(fileData.Filename, ".i9k")
+
 		if strings.HasSuffix(fileData.Filename, ".i9k") && r.URL.Query().Get("x") != "1" {
 			hterr(rw, fmt.Errorf("you cannot upload this type"))
 			return
@@ -198,6 +200,11 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 
 		var rd io.Reader = file
 		ext := Config.AcceptedFmt[FileType]
+
+		// Not actually an encrypted blob.
+		if !encrypted && ext == "i9k" {
+			ext = "bin"
+		}
 
 		if strings.HasPrefix(FileType, "text/xml") && ext != "svg" {
 			http.Error(rw, "invalid XML", http.StatusBadRequest)

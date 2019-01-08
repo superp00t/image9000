@@ -15,9 +15,13 @@
     "accepted_fmt": {
         "application/octet-stream": "i9k",
         "application/ogg": "ogg",
+        "application/x-zip-compressed": "zip",
         "application/zip": "zip",
         "application/x-gzip": "gz",
         "application/pdf": "pdf",
+        "audio/wav": "wav",
+        "audio/x-wav": "wav",
+        "audio/flac": "flac",
         "audio/mp3": "mp3",
         "audio/mpeg": "mp3",
         "audio/ogg": "ogg",
