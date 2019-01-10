@@ -13,17 +13,22 @@ function darkenBackground() {
 function mp3Player(url) {
   darkenBackground();
   document.body.innerHTML =
-  `<audio id="player" ${pcfg()}>
-    <source src="${url}" type="${img9k.mime}"/>
-  </audio>`;
+  `<div id="player_container">
+    <audio id="player" ${pcfg()}>
+      <source src="${url}" type="${img9k.mime}"/>
+    </audio>
+  </div>`;
+  new Plyr('#player');
 }
 
 function mp4Player(url) {
   darkenBackground();
   document.body.innerHTML =
-  `<video id="player" ${pcfg()} crossorigin playsinline controls loop>
-    <source src="${url}" type="${img9k.mime}"/>
-  </video>`;
+  `<div id="player_container">
+    <video id="player" ${pcfg()} crossorigin playsinline controls loop>
+      <source src="${url}" type="${img9k.mime}"/>
+    </video>
+  </div>`;
   new Plyr('#player');
 }
 
