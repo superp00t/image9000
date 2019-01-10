@@ -77,11 +77,14 @@ function update() {
     rib = q("#ribbon");
   }
 
+  var cc = q(".centralCard");
+  if (!cc) return;
+
   if (window.innerWidth < 500) {
-    q(".centralCard").style = "width: 84vw; margin-top: 20px;";
+    cc.style = "width: 84vw; margin-top: 20px;";
     rib.style = "display: none";
   } else {
-    q(".centralCard").style = "";
+    c.style = "";
     rib.style = "";
   }
 }

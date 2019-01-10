@@ -14,7 +14,7 @@ function mp3Player(url) {
   darkenBackground();
   document.body.innerHTML =
   `<audio id="player" ${pcfg()}>
-    <source src="${url}"/>
+    <source src="${url}" type="${img9k.mime}"/>
   </audio>`;
 }
 
@@ -22,7 +22,7 @@ function mp4Player(url) {
   darkenBackground();
   document.body.innerHTML =
   `<video id="player" ${pcfg()} controls loop>
-    <source src="${url}"/>
+    <source src="${url}" type="${img9k.mime}"/>
   </video>`;
   new Plyr('#player');
 }

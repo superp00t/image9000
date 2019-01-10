@@ -15,7 +15,7 @@
   <script src="assets/visitor.js"></script>
   <script>window.img9k={{.Metadata}}</script>
   <!-- Redirect to actual media (mp4, mp3)-->
-  {{if not .Metadata.Archive}}
+  {{if not .Archive}}
   <noscript>
     <meta http-equiv="refresh" content="0;url=i/{{.Metadata.Content}}">
   </noscript>

@@ -561,10 +561,12 @@ func srvMain(args []string) {
 type VisitorData struct {
 	Archive bool   `json:"archive"`
 	Content string `json:"content"`
+	Mime    string `json:"mime"`
 }
 
 type VisitorPage struct {
 	Filename string
+	Archive  bool
 	Metadata template.JS
 }
 
@@ -587,13 +589,26 @@ func (i *_iserver) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	if ext := filepath.Ext(thing); ext != "" {
+		vd := VisitorData{Content: thing}
+
+		ct := "application/octet-stream"
+
+		for k, v := range Config.AcceptedFmt {
+			if v == ext[1:] {
+				ct = k
+			}
+		}
+
 		yo.Ok("Filtering ext", ext)
-		switch ext {
-		case ".i9k", ".mp4", ".mp3", ".ogg", ".mkv", ".webm", ".flac", ".wav":
-			i.openVisitor(rw, r, VisitorData{Content: thing})
+
+		vd.Mime = ct
+		switch ext[1:] {
+		case "i9k", "mp4", "mp3", "ogg", "mkv", "webm", "flac", "wav":
+			i.openVisitor(rw, r, vd)
 			return
-		case ".gz", ".zip":
-			i.openVisitor(rw, r, VisitorData{Content: thing, Archive: true})
+		case "gz", "zip":
+			vd.Archive = true
+			i.openVisitor(rw, r, vd)
 			return
 		}
 	}
@@ -615,6 +630,7 @@ func (i *_iserver) openVisitor(rw http.ResponseWriter, r *http.Request, data Vis
 	encoded, _ := json.Marshal(data)
 	t := loadTpl("visitor.html")
 	exe(t, rw, VisitorPage{
+		Archive:  data.Archive,
 		Filename: data.Content,
 		Metadata: template.JS(encoded),
 	})
