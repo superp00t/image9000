@@ -84,7 +84,7 @@ function update() {
     cc.style = "width: 84vw; margin-top: 20px;";
     rib.style = "display: none";
   } else {
-    c.style = "";
+    cc.style = "";
     rib.style = "";
   }
 }
