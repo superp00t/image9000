@@ -7,7 +7,7 @@ function pcfg() {
 }
 
 function darkenBackground() {
-  document.body.style = "background: #111; position: relative;";
+  document.body.style = "background: #111; height: 100%;";
 }
 
 function mp3Player(url) {
@@ -21,7 +21,7 @@ function mp3Player(url) {
 function mp4Player(url) {
   darkenBackground();
   document.body.innerHTML =
-  `<video id="player" ${pcfg()} controls loop>
+  `<video id="player" ${pcfg()} crossorigin playsinline controls loop>
     <source src="${url}" type="${img9k.mime}"/>
   </video>`;
   new Plyr('#player');
