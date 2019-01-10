@@ -2,34 +2,31 @@ const plyrConfig = {
   disableContextMenu: false
 };
 
-function pcfg() {
-  return "controls-data-plyr-config='" + JSON.stringify(plyrConfig) + "'";
-}
 
 function darkenBackground() {
-  document.body.style = "background: #111; height: 100%;";
+  document.body.style = "background: #111; position: relative; height: 100%;";
 }
 
 function mp3Player(url) {
   darkenBackground();
   document.body.innerHTML =
   `<div id="player_container">
-    <audio id="player" ${pcfg()}>
+    <audio id="player">
       <source src="${url}" type="${img9k.mime}"/>
     </audio>
   </div>`;
-  new Plyr('#player');
+  new Plyr('#player', plyrConfig);
 }
 
 function mp4Player(url) {
   darkenBackground();
   document.body.innerHTML =
   `<div id="player_container">
-    <video id="player" ${pcfg()} crossorigin playsinline controls loop>
+    <video id="player" crossorigin playsinline controls loop>
       <source src="${url}" type="${img9k.mime}"/>
     </video>
   </div>`;
-  new Plyr('#player');
+  new Plyr('#player', plyrConfig);
 }
 
 var audioFormats = ["ogg", "flac", "mp3", "wav"];

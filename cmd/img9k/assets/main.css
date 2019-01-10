@@ -104,9 +104,9 @@ a:visited {
   max-width: 100%;
 }
 
-/* #player {
+#player_container {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-} */
+}
