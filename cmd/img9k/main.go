@@ -565,8 +565,7 @@ type VisitorData struct {
 }
 
 type VisitorPage struct {
-	Filename string
-	Archive  bool
+	Data     VisitorData
 	Metadata template.JS
 }
 
@@ -630,8 +629,7 @@ func (i *_iserver) openVisitor(rw http.ResponseWriter, r *http.Request, data Vis
 	encoded, _ := json.Marshal(data)
 	t := loadTpl("visitor.html")
 	exe(t, rw, VisitorPage{
-		Archive:  data.Archive,
-		Filename: data.Content,
+		Data:     data,
 		Metadata: template.JS(encoded),
 	})
 }
