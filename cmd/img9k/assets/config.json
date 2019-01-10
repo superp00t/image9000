@@ -38,6 +38,7 @@
         "video/mp4": "mp4",
         "video/ogg": "ogv",
         "video/webm": "webm",
+        "video/quicktime": "mov",
         "video/x-matroska": "mkv"
     },
 

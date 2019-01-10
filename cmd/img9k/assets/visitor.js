@@ -1,8 +1,52 @@
+const plyrConfig = {
+  disableContextMenu: false
+};
+
+function pcfg() {
+  return "controls-data-plyr-config='" + JSON.stringify(plyrConfig) + "'";
+}
+
+function darkenBackground() {
+  document.body.style = "background: #111; position: relative;";
+}
+
+function mp3Player(url) {
+  darkenBackground();
+  document.body.innerHTML =
+  `<audio id="player" ${pcfg()}>
+    <source src="${url}"/>
+  </audio>`;
+}
+
+function mp4Player(url) {
+  darkenBackground();
+  document.body.innerHTML =
+  `<video id="player" ${pcfg()} controls loop>
+    <source src="${url}"/>
+  </video>`;
+  new Plyr('#player');
+}
+
+var audioFormats = ["ogg", "flac", "mp3", "wav"];
+var videoFormats = ["mp4", "webm", "mkv"];
+
 window.addEventListener("load", () => {
+  var ext = img9k.content.split(".")[1];
+
   var hash = window.location.hash.slice(1);
 
+  if (audioFormats.includes(ext)) {
+    mp3Player("/i/" + img9k.content);
+    return;
+  }
+
+  if (videoFormats.includes(ext)) {
+    mp4Player("/i/" + img9k.content);
+    return;
+  }
+
   // Encryption has been enabled
-  if (img9k.content.endsWith(".i9k")) {
+  if (ext === "i9k") {
     fetch("/i/" + img9k.content)
     .then((e) => e.arrayBuffer())
     .then((data) => {
@@ -73,6 +117,16 @@ window.addEventListener("load", () => {
       var _blob = new Blob([dataBuffer], { type: mimeType });
       
       var blob = window.URL.createObjectURL(_blob);
+
+      if (type == "video") {
+        mp4Player(blob);
+        return;
+      }
+
+      if (type == "audio") {
+        mp3Player(blob);
+        return;
+      }
 
       var txt = "";
 

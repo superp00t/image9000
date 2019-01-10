@@ -39,7 +39,7 @@ i9k.setup = function() {
   pf.addEventListener("change", function(files) {
     if (pf.files.length === 0) return;
 
-    if (pf.files.length !== 1) {
+    if (pf.files.length !== 1 && pf.files[1].type !== "video/quicktime") {
       alert("you cannot upload more than one file.");
       return;
     }

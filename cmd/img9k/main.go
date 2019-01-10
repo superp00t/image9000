@@ -10,8 +10,10 @@ import (
 	"io"
 	"io/ioutil"
 	"math/rand"
+	"mime/multipart"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -176,13 +178,49 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 		}
 
 		r.ParseForm()
-		r.ParseMultipartForm(Config.MaxSize)
-		file, fileData, err := r.FormFile("file")
+		err := r.ParseMultipartForm(Config.MaxSize)
+		if err != nil {
+			hterr(rw, err)
+			return
+		}
+
+		files := r.MultipartForm.File["file"]
+		if len(files) == 0 {
+			hterr(rw, fmt.Errorf("no files"))
+			return
+		}
 
 		if err != nil {
 			hterr(rw, err)
 			return
 		}
+
+		if len(files) > 2 {
+			hterr(rw, fmt.Errorf("only one file allowed"))
+			return
+		}
+
+		var rd io.Reader
+
+		fileData := files[0]
+
+		var file multipart.File
+		// Allow Live Photos
+		if len(files) > 1 {
+			if files[0].Header.Get("Content-Type") == "image/jpeg" &&
+				files[1].Header.Get("Content-Type") == "video/mov" {
+				fileData = files[1]
+				file, err = files[1].Open()
+			}
+		} else {
+			file, err = files[0].Open()
+		}
+		if err != nil {
+			hterr(rw, err)
+			return
+		}
+
+		rd = file
 
 		FileType := fileData.Header.Get("Content-Type")
 
@@ -198,7 +236,6 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		var rd io.Reader = file
 		ext := Config.AcceptedFmt[FileType]
 
 		// Not actually an encrypted blob.
@@ -221,6 +258,47 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 				return
 			}
 			rd = fileBuf
+		}
+
+		if ext == "mov" {
+			uidm := etc.TmpDirectory().Concat(etc.GenerateRandomUUID().String()).Render() + ".mov"
+			outm := etc.TmpDirectory().Concat(etc.GenerateRandomUUID().String()).Render() + ".mp4"
+			err2 := fmt.Errorf("could not write temporary mov")
+
+			fi, err := etc.FileController(uidm)
+			if err != nil {
+				yo.Warn(err2, ":", err)
+				hterr(rw, err2)
+				return
+			}
+
+			io.Copy(fi, rd)
+			fi.Close()
+
+			defer os.Remove(uidm)
+
+			c := exec.Command("ffmpeg", "-i", uidm, "-vcodec", "copy", "-acodec", "copy", outm)
+			err = c.Run()
+			if err != nil {
+				yo.Warn("FFMPEG is not installed. Cannot convert mov")
+				hterr(rw, fmt.Errorf("no FFMPEG installed"))
+				return
+			}
+
+			read, err := etc.FileController(outm)
+			if err != nil {
+				yo.Warn(err2, ":", err)
+				hterr(rw, err2)
+				return
+			}
+
+			FileType = "video/mp4"
+			ext = "mp4"
+
+			defer read.Close()
+			defer os.Remove(outm)
+
+			rd = read
 		}
 
 		if ext == "" {
@@ -511,7 +589,7 @@ func (i *_iserver) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	if ext := filepath.Ext(thing); ext != "" {
 		yo.Ok("Filtering ext", ext)
 		switch ext {
-		case ".i9k":
+		case ".i9k", ".mp4", ".mp3", ".ogg", ".mkv", ".webm", ".flac", ".wav":
 			i.openVisitor(rw, r, VisitorData{Content: thing})
 			return
 		case ".gz", ".zip":

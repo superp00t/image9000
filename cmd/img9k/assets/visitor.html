@@ -7,11 +7,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/png" href="assets/favicon.png" />
   <link rel="stylesheet" type="text/css" media="screen" href="/assets/main.css" />
+  <link rel="stylesheet" type="text/css" media="screen" href="/assets/plyr.css" />
   <script src="assets/purify.min.js"></script>
+  <script src="assets/plyr.min.js"></script>
   <script src="assets/superp00t-etc.min.js"></script>
   <script src="assets/ui.js"></script>
   <script src="assets/visitor.js"></script>
-  <script>window.img9k={{.Metadata}}</script> 
+  <script>window.img9k={{.Metadata}}</script>
+  <!-- Redirect to actual media (mp4, mp3)-->
+  {{if not .Metadata.Archive}}
+  <noscript>
+    <meta http-equiv="refresh" content="0;url=i/{{.Metadata.Content}}">
+  </noscript>
+  {{end}}
 </head>
 <body>
   <div class="centralCard">
