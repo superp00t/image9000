@@ -327,7 +327,22 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 
 		if FileType == "image/jpeg" {
 			Debug("JPEG detected, re-encoding to remove harmful metadata")
-			img, err := jpeg.Decode(rd)
+
+			buffer := etc.NewBuffer()
+			io.Copy(buffer, rd)
+
+			cfg, err := jpeg.DecodeConfig(buffer)
+			if err != nil {
+				hterr(rw, err)
+				return
+			}
+
+			if cfg.Height >= 8000 || cfg.Width >= 12000 {
+				hterr(rw, fmt.Errorf("cannot upload large image like this"))
+				return
+			}
+
+			img, err := jpeg.Decode(buffer)
 			if err != nil {
 				hterr(rw, err)
 				return

@@ -1,2 +1,4 @@
 9000server
 i/*
+cmd/share9k/**
+cmd/share9k-launcher/**
