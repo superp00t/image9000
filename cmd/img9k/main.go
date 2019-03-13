@@ -342,6 +342,8 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 				return
 			}
 
+			buffer.SeekR(0)
+
 			img, err := jpeg.Decode(buffer)
 			if err != nil {
 				hterr(rw, err)
