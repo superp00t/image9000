@@ -324,7 +324,6 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 
 			if !okay {
 				ext = "txt"
-				return
 			}
 		}
 
