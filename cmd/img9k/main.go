@@ -323,8 +323,7 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 			}
 
 			if !okay {
-				Debug("Text type " + ext + " not supported")
-				hterr(rw, fmt.Errorf("Text type (%s) not supported.", ext))
+				ext = "txt"
 				return
 			}
 		}
