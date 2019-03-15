@@ -307,7 +307,7 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if FileType == "text/plain; charset=utf-8" {
+		if strings.HasPrefix(FileType, "text/") {
 			ext = filepath.Ext(fileData.Filename)[1:]
 			okay := false
 

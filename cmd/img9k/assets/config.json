@@ -29,6 +29,8 @@
         "image/jpeg": "jpg",
         "image/png": "png",
         "image/svg+xml": "svg",
+        "text/x-csrc": "c",
+        "text/plain": "txt",
         "text/plain; charset=utf-8": "txt",
         "text/xml; charset=utf-8": "xml",
         "image/heif": "heic",
@@ -51,7 +53,8 @@
         "txt",
         "sh",
         "lua",
-        "go"
+        "go",
+        "c"
     ],
 
     "sassy_remarks": [
