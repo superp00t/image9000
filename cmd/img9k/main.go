@@ -243,6 +243,10 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 			ext = "bin"
 		}
 
+		if ext == "" && strings.HasPrefix(FileType, "text/") {
+			ext = "txt"
+		}
+
 		if strings.HasPrefix(FileType, "text/xml") && ext != "svg" {
 			http.Error(rw, "invalid XML", http.StatusBadRequest)
 			return
