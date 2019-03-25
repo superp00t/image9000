@@ -29,6 +29,7 @@
         "image/jpeg": "jpg",
         "image/png": "png",
         "image/svg+xml": "svg",
+        "image/webp": "webp",
         "text/x-csrc": "c",
         "text/plain": "txt",
         "text/plain; charset=utf-8": "txt",
