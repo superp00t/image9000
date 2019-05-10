@@ -44,7 +44,6 @@ func (c *cacher) serveContent(rw http.ResponseWriter, r *http.Request, path stri
 	}
 
 	if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-		rw.Header().Set("Content-Encoding", "gzip")
 
 		file, err := etc.FileController(path, true)
 		if err != nil {
@@ -53,6 +52,12 @@ func (c *cacher) serveContent(rw http.ResponseWriter, r *http.Request, path stri
 
 		tp := http.DetectContentType(file.ReadBytes(512))
 
+		if strings.HasPrefix(tp, "text/") {
+			http.ServeFile(rw, r, path)
+			return
+		}
+
+		rw.Header().Set("Content-Encoding", "gzip")
 		rw.Header().Set("Content-Type", tp)
 
 		file.SeekR(0)
