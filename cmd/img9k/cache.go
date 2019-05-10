@@ -36,16 +36,6 @@ func (c *cacher) Available() uint64 {
 	return directory.Concat("c").Free()
 }
 
-type cachedResponseWriter struct {
-	http.ResponseWriter
-
-	gz *gzip.Writer
-}
-
-func (c *cachedResponseWriter) Write(b []byte) (int, error) {
-	return c.gz.Write(b)
-}
-
 func (c *cacher) serveContent(rw http.ResponseWriter, r *http.Request, path string) {
 	if strings.Contains(r.Header.Get("Accept-Ranges"), "-") {
 		// Cannot serve compressed in this fashion
@@ -55,9 +45,22 @@ func (c *cacher) serveContent(rw http.ResponseWriter, r *http.Request, path stri
 
 	if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 		rw.Header().Set("Content-Encoding", "gzip")
-		crw := &cachedResponseWriter{ResponseWriter: rw, gz: gzip.NewWriter(rw)}
-		http.ServeFile(crw, r, path)
-		crw.gz.Close()
+
+		file, err := etc.FileController(path, true)
+		if err != nil {
+			return
+		}
+
+		tp := http.DetectContentType(file.ReadBytes(512))
+
+		rw.Header().Set("Content-Type", tp)
+
+		file.SeekR(0)
+
+		gz := gzip.NewWriter(rw)
+		io.Copy(gz, file)
+		gz.Close()
+		file.Close()
 		return
 	}
 
