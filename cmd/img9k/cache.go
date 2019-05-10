@@ -47,7 +47,7 @@ func (c *cachedResponseWriter) Write(b []byte) (int, error) {
 }
 
 func (c *cacher) serveContent(rw http.ResponseWriter, r *http.Request, path string) {
-	if r.Header.Get("Accept-Ranges") != "" {
+	if strings.Contains(r.Header.Get("Accept-Ranges"), "-") {
 		// Cannot serve compressed in this fashion
 		http.ServeFile(rw, r, path)
 		return
@@ -109,14 +109,19 @@ func (c *cacher) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		yo.Fatal(err)
 	}
 
-	f.Flush()
+	if err = f.Flush(); err != nil {
+		yo.Fatal(err)
+	}
 
 	s, err := etc.FileController(pSrcPath.Render(), true)
 	if err != nil {
 		yo.Fatal(err)
 	}
 
-	io.Copy(f, s)
+	if _, err = io.Copy(f, s); err != nil {
+		yo.Fatal(err)
+	}
+
 	f.Close()
 	s.Close()
 
