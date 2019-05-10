@@ -22,11 +22,15 @@ import (
 
 	"github.com/superp00t/etc"
 
-	"github.com/NYTimes/gziphandler"
-
 	"github.com/c2h5oh/datasize"
 	"github.com/gorilla/mux"
 	"github.com/superp00t/etc/yo"
+	"github.com/tdewolff/minify"
+	"github.com/tdewolff/minify/css"
+	"github.com/tdewolff/minify/html"
+	"github.com/tdewolff/minify/js"
+	mjson "github.com/tdewolff/minify/json"
+	"github.com/tdewolff/minify/svg"
 )
 
 const b64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_!"
@@ -58,7 +62,23 @@ type Configuration struct {
 	RateLimitIntervalSeconds int64 `json:"rate_limit_interval_seconds"`
 	EncryptedFileLifetime    int64 `json:"encrypted_file_lifetime_minutes"`
 
+	CacheDuration Duration `json:"cache_duration"`
+	MaxCacheBytes uint64   `json:"max_cache_bytes"`
+
 	AbuseReportURL string `json:"abuse_report_url"`
+}
+
+type Duration struct {
+	time.Duration
+}
+
+func (d *Duration) UnmarshalJSON(b []byte) (err error) {
+	d.Duration, err = time.ParseDuration(strings.Trim(string(b), `"`))
+	return
+}
+
+func (d Duration) MarshalJSON() (b []byte, err error) {
+	return []byte(fmt.Sprintf(`"%s"`, d.String())), nil
 }
 
 func (c Configuration) GetLifetime() time.Duration {
@@ -466,31 +486,50 @@ func IndexHTML(rw http.ResponseWriter, r *http.Request) {
 	result.AbuseReportURL = Config.AbuseReportURL
 	result.Stamp = fmt.Sprintf("%v", time.Since(start))
 	result.FilesUploaded = len(files)
-	exe(t, rw, result)
-}
 
-type proxyWriter struct {
-	w io.Writer
-}
-
-func (p *proxyWriter) Write(b []byte) (int, error) {
-	ln := len(b)
-	n := []byte{}
-
-	for _, v := range b {
-		if v != '\t' && v != '\n' && v != '\r' {
-			n = append(n, v)
-		}
+	rw.Header().Set("Content-Type", "text/html; charset=utf-8")
+	idx := directory.Concat("c", "index")
+	if idx.IsExtant() == false {
+		data := execute(t, result)
+		idx.WriteAll(data)
+		rw.Write(data)
+		return
 	}
 
-	_, err := p.w.Write(n)
-	return ln, err
+	if time.Since(idx.Time()) < 10*time.Second {
+		dat, _ := idx.ReadAll()
+		rw.Write(dat)
+		return
+	}
+
+	data := execute(t, result)
+	idx.WriteAll(data)
+	rw.Write(data)
 }
 
-func exe(t *template.Template, w io.Writer, v interface{}) {
-	pw := &proxyWriter{w}
+func exe(t *template.Template, rw http.ResponseWriter, v interface{}) {
+	rw.Header().Set("Content-Type", "text/html; charset=utf-8")
+	data := execute(t, v)
+	rw.Write(data)
+}
 
-	t.Execute(pw, v)
+func execute(t *template.Template, v interface{}) []byte {
+	out := etc.NewBuffer()
+
+	m := minify.New()
+	m.AddFunc("text/css", css.Minify)
+	m.AddFunc("text/html", html.Minify)
+	m.AddFunc("image/svg+xml", svg.Minify)
+	m.AddFuncRegexp(regexp.MustCompile("^(application|text)/(x-)?(java|ecma)script$"), js.Minify)
+	m.AddFuncRegexp(regexp.MustCompile("[/+]json$"), mjson.Minify)
+
+	wr := m.Writer("text/html", out)
+	if err := t.Execute(wr, v); err != nil {
+		yo.Fatal(err)
+	}
+	wr.Close()
+
+	return out.Bytes()
 }
 
 var directory etc.Path
@@ -543,6 +582,10 @@ func srvMain(args []string) {
 		yo.Fatal(err)
 	}
 
+	if Config.MaxCacheBytes == 0 {
+		Config.MaxCacheBytes = etc.MB * 850
+	}
+
 	imageExt, err = regexp.Compile("(?i).(jpg|jpeg|png|gif)$")
 	if err != nil {
 		yo.Fatal(err)
@@ -553,6 +596,11 @@ func srvMain(args []string) {
 		if err := os.MkdirAll(directory.Concat("i").Render(), 0700); err != nil {
 			yo.Fatal(err)
 		}
+	}
+
+	if !directory.Exists("c") {
+		yo.Ok("No cache directory found. Creating...")
+		directory.Concat("c").MakeDir()
 	}
 
 	go sweep()
@@ -566,7 +614,7 @@ func srvMain(args []string) {
 	// Serve files
 	r.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(assetFS())))
 
-	iserver := gziphandler.GzipHandler(http.FileServer(http.Dir(directory.Concat("i").Render())))
+	iserver := &cacher{Handler: http.FileServer(http.Dir(directory.Concat("i").Render()))}
 
 	r.PathPrefix("/i/").Handler(http.StripPrefix("/i/", iserver))
 	is := new(_iserver)
@@ -621,7 +669,7 @@ func (i *_iserver) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 
 		vd.Mime = ct
 		switch ext[1:] {
-		case "i9k", "mp4", "mp3", "ogg", "mkv", "webm", "flac", "wav":
+		case "i9k", "mp3", "ogg", "flac", "wav":
 			i.openVisitor(rw, r, vd)
 			return
 		case "gz", "zip":

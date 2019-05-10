@@ -28,6 +28,7 @@
         "image/gif": "gif",
         "image/jpeg": "jpg",
         "image/png": "png",
+        "image/x-icon": "ico",
         "image/svg+xml": "svg",
         "image/webp": "webp",
         "text/x-csrc": "c",
@@ -69,5 +70,9 @@
         "holy fuck this uploader sucks",
         "remember to stop uploading every now and again. uploading for extended periods is unhealthy",
         "if this doesn't work please open an issue on github"
-    ]
+    ],
+
+    "cache_duration": "24h",
+
+    "max_cache_bytes": 891289600
 }
