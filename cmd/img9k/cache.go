@@ -52,7 +52,8 @@ func (c *cacher) serveContent(rw http.ResponseWriter, r *http.Request, path stri
 
 		tp := http.DetectContentType(file.ReadBytes(512))
 
-		yo.Ok("path == ", tp)
+		yo.Ok("type == ", tp)
+		yo.Ok("content == ", path)
 		rw.Header().Set("Content-Type", tp)
 
 		rw.Header().Set("Content-Encoding", "gzip")
@@ -61,7 +62,10 @@ func (c *cacher) serveContent(rw http.ResponseWriter, r *http.Request, path stri
 		rw.WriteHeader(200)
 
 		gz := gzip.NewWriter(rw)
-		io.Copy(gz, file)
+		_, err = io.Copy(gz, file)
+		if err != nil {
+			yo.Warn(err)
+		}
 		gz.Close()
 		file.Close()
 
@@ -73,6 +77,7 @@ func (c *cacher) serveContent(rw http.ResponseWriter, r *http.Request, path stri
 
 func (c *cacher) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	pth := r.URL.Path[1:]
+	yo.Ok("Serving", pth)
 	hash := hashString(pth)
 	pCachePath := directory.Concat("c").Concat(hash)
 	pSrcPath := directory.Concat("i").GetSub(etc.ParseUnixPath(pth))
