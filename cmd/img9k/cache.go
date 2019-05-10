@@ -43,10 +43,6 @@ type cachedResponseWriter struct {
 }
 
 func (c *cachedResponseWriter) Write(b []byte) (int, error) {
-	if c.gz == nil {
-		c.gz = gzip.NewWriter(c.ResponseWriter)
-	}
-
 	return c.gz.Write(b)
 }
 
@@ -59,7 +55,9 @@ func (c *cacher) serveContent(rw http.ResponseWriter, r *http.Request, path stri
 
 	if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
 		rw.Header().Set("Content-Encoding", "gzip")
-		http.ServeFile(&cachedResponseWriter{ResponseWriter: rw}, r, path)
+		crw := &cachedResponseWriter{ResponseWriter: rw, gz: gzip.NewWriter(rw)}
+		http.ServeFile(crw, r, path)
+		crw.gz.Close()
 		return
 	}
 

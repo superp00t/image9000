@@ -586,6 +586,10 @@ func srvMain(args []string) {
 		Config.MaxCacheBytes = etc.MB * 850
 	}
 
+	if Config.CacheDuration.Duration == 0 {
+		Config.CacheDuration.Duration = 24 * time.Hour
+	}
+
 	imageExt, err = regexp.Compile("(?i).(jpg|jpeg|png|gif)$")
 	if err != nil {
 		yo.Fatal(err)
