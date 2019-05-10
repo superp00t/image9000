@@ -52,10 +52,10 @@ func (c *cacher) serveContent(rw http.ResponseWriter, r *http.Request, path stri
 
 		tp := http.DetectContentType(file.ReadBytes(512))
 
-		rw.WriteHeader(200)
+		yo.Ok("path == ", tp)
+		rw.Header().Set("Content-Type", tp)
 
 		rw.Header().Set("Content-Encoding", "gzip")
-		rw.Header().Set("Content-Type", tp)
 
 		file.SeekR(0)
 
@@ -63,6 +63,9 @@ func (c *cacher) serveContent(rw http.ResponseWriter, r *http.Request, path stri
 		io.Copy(gz, file)
 		gz.Close()
 		file.Close()
+
+		rw.WriteHeader(200)
+
 		return
 	}
 
