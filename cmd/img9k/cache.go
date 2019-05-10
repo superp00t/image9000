@@ -52,7 +52,7 @@ func (c *cacher) serveContent(rw http.ResponseWriter, r *http.Request, name, pat
 
 		tp := http.DetectContentType(file.ReadBytes(512))
 
-		if strings.HasPrefix(tp, "text") && strings.HasSuffix(path, ".svg") {
+		if strings.HasPrefix(tp, "text") && strings.HasSuffix(name, ".svg") {
 			tp = "image/svg+xml; charset=utf8"
 		}
 
