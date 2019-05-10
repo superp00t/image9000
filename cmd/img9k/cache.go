@@ -52,10 +52,7 @@ func (c *cacher) serveContent(rw http.ResponseWriter, r *http.Request, path stri
 
 		tp := http.DetectContentType(file.ReadBytes(512))
 
-		if strings.HasPrefix(tp, "text/") {
-			http.ServeFile(rw, r, path)
-			return
-		}
+		rw.WriteHeader(200)
 
 		rw.Header().Set("Content-Encoding", "gzip")
 		rw.Header().Set("Content-Type", tp)
