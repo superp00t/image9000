@@ -44,9 +44,9 @@ func (c *cacher) serveContent(rw http.ResponseWriter, r *http.Request, path stri
 	}
 
 	if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-
 		file, err := etc.FileController(path, true)
 		if err != nil {
+			yo.Warn("Cannot open file", path, err)
 			return
 		}
 
@@ -58,13 +58,12 @@ func (c *cacher) serveContent(rw http.ResponseWriter, r *http.Request, path stri
 		rw.Header().Set("Content-Encoding", "gzip")
 
 		file.SeekR(0)
+		rw.WriteHeader(200)
 
 		gz := gzip.NewWriter(rw)
 		io.Copy(gz, file)
 		gz.Close()
 		file.Close()
-
-		rw.WriteHeader(200)
 
 		return
 	}
