@@ -36,7 +36,7 @@ func (c *cacher) Available() uint64 {
 	return directory.Concat("c").Free()
 }
 
-func (c *cacher) serveContent(rw http.ResponseWriter, r *http.Request, path string) {
+func (c *cacher) serveContent(rw http.ResponseWriter, r *http.Request, name, path string) {
 	if strings.Contains(r.Header.Get("Accept-Ranges"), "-") {
 		// Cannot serve compressed in this fashion
 		http.ServeFile(rw, r, path)
@@ -52,10 +52,14 @@ func (c *cacher) serveContent(rw http.ResponseWriter, r *http.Request, path stri
 
 		tp := http.DetectContentType(file.ReadBytes(512))
 
+		if strings.HasPrefix(tp, "text") && strings.HasSuffix(path, ".svg") {
+			tp = "image/svg+xml; charset=utf8"
+		}
+
 		yo.Ok("type == ", tp)
 		yo.Ok("content == ", path)
-		rw.Header().Set("Content-Type", tp)
 
+		rw.Header().Set("Content-Type", tp)
 		rw.Header().Set("Content-Encoding", "gzip")
 
 		file.SeekR(0)
@@ -84,13 +88,13 @@ func (c *cacher) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 
 	if pCachePath.IsExtant() && time.Since(pCachePath.Time()) < Config.CacheDuration.Duration {
 		// cached file exists.
-		c.serveContent(rw, r, pCachePath.Render())
+		c.serveContent(rw, r, pth, pCachePath.Render())
 		return
 	}
 
 	// Backend may be down. serve cached file in its place.
 	if !pSrcPath.IsExtant() && pCachePath.IsExtant() {
-		c.serveContent(rw, r, pCachePath.Render())
+		c.serveContent(rw, r, pth, pCachePath.Render())
 		return
 	}
 
@@ -137,5 +141,5 @@ func (c *cacher) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	f.Close()
 	s.Close()
 
-	c.serveContent(rw, r, pCachePath.Render())
+	c.serveContent(rw, r, pth, pCachePath.Render())
 }
