@@ -62,6 +62,10 @@ func (c *cacher) serveContent(rw http.ResponseWriter, r *http.Request, name, pat
 			typ := s[len(s)-1]
 			if typeMap[typ] != "" {
 				tp = typeMap[typ]
+			} else {
+				yo.Warn(s)
+				yo.Warn(typ)
+				yo.Warn(tp)
 			}
 		}
 
