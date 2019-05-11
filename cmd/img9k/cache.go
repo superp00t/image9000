@@ -103,6 +103,12 @@ func (c *cacher) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// do not cache large files.
+	if pSrcPath.IsExtant() && pSrcPath.Size() > 250*etc.MB {
+		http.ServeFile(rw, r, pSrcPath.Render())
+		return
+	}
+
 	cacheDir := directory.Concat("c")
 
 	// delete oldest item in cache if we have not enough space.
