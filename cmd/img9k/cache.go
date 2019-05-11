@@ -52,8 +52,17 @@ func (c *cacher) serveContent(rw http.ResponseWriter, r *http.Request, name, pat
 
 		tp := http.DetectContentType(file.ReadBytes(512))
 
-		if strings.HasPrefix(tp, "text") && strings.HasSuffix(name, ".svg") {
-			tp = "image/svg+xml; charset=utf8"
+		if strings.HasPrefix(tp, "text") {
+			typeMap := map[string]string{
+				"svg": "image/svg+xml; charset=utf-8",
+				"css": "text/css; charset=utf-8",
+			}
+
+			s := strings.Split(name, ".")
+			typ := s[len(s)-1]
+			if typeMap[typ] != "" {
+				tp = typeMap[typ]
+			}
 		}
 
 		yo.Ok("type == ", tp)
