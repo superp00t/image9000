@@ -55,6 +55,7 @@ func (c *cacher) serveContent(rw http.ResponseWriter, r *http.Request, name, pat
 		typeMap := map[string]string{
 			"svg": "image/svg+xml; charset=utf-8",
 			"css": "text/css; charset=utf-8",
+			"js":  "application/javascript; charset=utf-8",
 		}
 
 		s := strings.Split(name, ".")
