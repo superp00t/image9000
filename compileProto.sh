@@ -1,0 +1,1 @@
+protoc i9k.proto --go_out=plugins=grpc:i9k

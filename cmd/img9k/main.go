@@ -2,6 +2,7 @@ package main
 
 import (
 	crand "crypto/rand"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -19,6 +20,10 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"google.golang.org/grpc"
+
+	"github.com/superp00t/image9000/i9k"
 
 	"github.com/superp00t/etc"
 
@@ -41,6 +46,7 @@ var (
 	postsPerMinute map[string]int64
 	Config         Configuration
 	HitFromIP      = make(chan RateLimitReq)
+	fsystem        filesystem
 )
 
 type Configuration struct {
@@ -64,6 +70,12 @@ type Configuration struct {
 
 	CacheDuration Duration `json:"cache_duration"`
 	MaxCacheBytes uint64   `json:"max_cache_bytes"`
+
+	Filesystem               string `json:"filesystem"`
+	RemoteStorageServer      string `json:"remote_storage_server"`
+	RemoteStorageFingerprint string `json:"remote_storage_fingerprint"`
+
+	LocalStorage string `json:"local_storage"`
 
 	AbuseReportURL string `json:"abuse_report_url"`
 }
@@ -221,6 +233,7 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 		}
 
 		var rd io.Reader
+		var size int64
 
 		fileData := files[0]
 
@@ -241,6 +254,7 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 		}
 
 		rd = file
+		size = fileData.Size
 
 		FileType := fileData.Header.Get("Content-Type")
 
@@ -282,6 +296,7 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 				return
 			}
 			rd = fileBuf
+			size = fileBuf.Size()
 		}
 
 		if ext == "mov" {
@@ -323,6 +338,7 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 			defer os.Remove(outm)
 
 			rd = read
+			size = read.Size()
 		}
 
 		if ext == "" {
@@ -379,19 +395,13 @@ func UploadHandler(rw http.ResponseWriter, r *http.Request) {
 				hterr(rw, err)
 				return
 			}
+			size = out.Size()
 			rd = out
 		}
 
 		id := CreateFileId(ext)
 
-		diskfile, err := etc.FileController(directory.Concat("i", id).Render())
-		if err != nil {
-			panic(err)
-		}
-
-		tmpBuffer := make([]byte, int(4*datasize.MB))
-
-		_, err = io.CopyBuffer(diskfile, rd, tmpBuffer)
+		err = fsystem.Overwrite(id, size, rd)
 		if err != nil {
 			yo.Warn(err)
 			hterr(rw, fmt.Errorf("Could not write your file. Perhaps the server ran out of storage space."))
@@ -454,8 +464,8 @@ func IndexHTML(rw http.ResponseWriter, r *http.Request) {
 
 	if Config.ShowRandomImage {
 		for _, file := range files {
-			if imageExt.MatchString(file.Name()) && file.Size() < 800000 {
-				filenames = append(filenames, file.Name())
+			if imageExt.MatchString(file.Path) && file.Size < 800000 {
+				filenames = append(filenames, file.Path)
 			}
 		}
 
@@ -472,9 +482,7 @@ func IndexHTML(rw http.ResponseWriter, r *http.Request) {
 	totalSize := int64(0)
 
 	for _, i := range files {
-		if i.IsDir() == false {
-			totalSize += i.Size()
-		}
+		totalSize += i.Size
 	}
 
 	result.TotalSize = datasize.ByteSize(totalSize).HumanReadable()
@@ -536,6 +544,7 @@ var directory etc.Path
 
 func main() {
 	yo.AddSubroutine("run", []string{"directory"}, "a terribly engineered file hosting service.", srvMain)
+	yo.AddSubroutine("storage", []string{"directory"}, "run a storage server", runStorage)
 	yo.Init()
 }
 
@@ -572,6 +581,23 @@ func srvMain(args []string) {
 		}
 	}
 
+	if directory.Exists("cert.pem") == false {
+		i9k.GenerateTLSKeyPair(directory.Render())
+	}
+
+	id, _ := i9k.GetCertFileFingerprint(directory.Concat("cert.pem").Render())
+
+	certificates, err := tls.LoadX509KeyPair(
+		directory.Concat("cert.pem").Render(),
+		directory.Concat("key.pem").Render(),
+	)
+
+	if err != nil {
+		yo.Fatal(err)
+	}
+
+	yo.Ok("Remote storage client fingerprint:", id)
+
 	cdat, err := ioutil.ReadFile(directory.Concat("config.json").Render())
 	if err != nil {
 		yo.Fatal("You need a config.json file to run this site.")
@@ -595,6 +621,47 @@ func srvMain(args []string) {
 		yo.Fatal(err)
 	}
 
+	switch Config.Filesystem {
+	case "remote":
+		rmt := &remote{}
+		rmt.Certificate = certificates
+		rmt.serverFingerprint = Config.RemoteStorageFingerprint
+		gc, err := grpc.Dial(
+			Config.RemoteStorageServer,
+			grpc.WithInsecure(),
+			grpc.WithContextDialer(rmt.dialContext),
+		)
+		if err != nil {
+			panic(err)
+		}
+
+		rmt.FileStorageClient = &i9k.FileStorageClient{}
+		rmt.FileStorageClient.StorageClient = i9k.NewStorageClient(gc)
+
+		fsystem = rmt
+	case "local":
+		loc := &local{}
+		if Config.LocalStorage == "" {
+			loc.Base = directory.Concat("i")
+		} else {
+			lPath := etc.ParseSystemPath(Config.LocalStorage)
+			if lPath[0] != "..." {
+				loc.Base = lPath
+			} else {
+				loc.Base = directory.GetSub(lPath)
+			}
+		}
+
+		if loc.Base.IsExtant() == false {
+			yo.Ok("Creating", loc.Base.Render())
+			loc.Base.MakeDir()
+		}
+
+		fsystem = loc
+	default:
+		yo.Fatal("unknown filesystem:", Config.Filesystem)
+	}
+
 	if !directory.Exists("i") {
 		yo.Ok("No i directory found. Creating...")
 		if err := os.MkdirAll(directory.Concat("i").Render(), 0700); err != nil {
@@ -607,7 +674,6 @@ func srvMain(args []string) {
 		directory.Concat("c").MakeDir()
 	}
 
-	go sweep()
 	go RateLimiter()
 
 	r := mux.NewRouter()
@@ -618,12 +684,10 @@ func srvMain(args []string) {
 	// Serve files
 	r.PathPrefix("/assets/").Handler(http.StripPrefix("/assets/", http.FileServer(assetFS())))
 
-	iserver := &cacher{Handler: http.FileServer(http.Dir(directory.Concat("i").Render()))}
+	iserver := &cacher{}
 
-	r.PathPrefix("/i/").Handler(http.StripPrefix("/i/", iserver))
-	is := new(_iserver)
-	is.relay = iserver
-	r.PathPrefix("/{thing}").Handler(is)
+	// r.PathPrefix("/i/").Handler(http.StripPrefix("/i/", iserver))
+	r.PathPrefix("/{thing}").Handler(iserver)
 
 	yo.Printf("Listening at %s\n", Config.Listen)
 	yo.Fatal(http.ListenAndServe(Config.Listen, Log(r)))
@@ -710,38 +774,11 @@ func hterr(rw http.ResponseWriter, err error) {
 	rw.Write([]byte(err.Error()))
 }
 
-func sweep() {
-	for {
-		dirs := readImgDir()
-
-		for _, dir := range dirs {
-			if strings.HasSuffix(dir.Name(), ".i9k") {
-				if time.Since(dir.ModTime()) > Config.GetLifetime() {
-					err := os.Remove(directory.Concat("i", dir.Name()).Render())
-					if err != nil {
-						yo.Fatal(err)
-					}
-				}
-			}
-		}
-
-		time.Sleep(120 * time.Second)
+func readImgDir() []*i9k.DirectoryEnt {
+	dl, err := fsystem.List()
+	if err != nil {
+		return nil
 	}
-}
 
-func readImgDir() []os.FileInfo {
-	dir := directory.Concat("i", "").Render()
-	yo.Warn("reading directory", dir)
-
-	for {
-		dirs, err := ioutil.ReadDir(dir)
-		if err != nil {
-			if err.Error() == "readdirent: no such file or directory" {
-				yo.Warn(err)
-				continue
-			}
-		}
-
-		return dirs
-	}
+	return dl
 }

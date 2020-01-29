@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+message Empty {}
+
+message StatRequest {
+  string Path = 1;
+}
+
+message StatResponse {
+  string FileName = 1;
+  int64  FileSize = 2;
+  uint32 FileMode = 3;
+  google.protobuf.Timestamp FileModTime = 4;
+  bool   FileIsDirectory = 5;
+}
+
+message WritePiece {
+  oneof PieceContent {
+    string     FileName = 1;
+    bytes      Data   = 2;
+  }
+}
+
+message ReadAtRequest {
+  string     Path = 1;
+  uint64     StartOffset = 2;
+  uint64     Size = 3;
+}
+  
+message ReadChunk {
+  bytes Data = 1; 
+}
+
+message DirectoryEnt {
+  string Path = 1;
+  int64  Size = 2;
+}
+
+message DirectoryList {
+  repeated DirectoryEnt Results = 1;
+}
+
+service Storage {
+  rpc Stat(StatRequest) returns (StatResponse);
+  rpc WriteAll(stream WritePiece) returns (Empty);
+  rpc ReadAt(ReadAtRequest) returns (ReadChunk);
+  rpc ListDirectory(Empty) returns (DirectoryList);
+}

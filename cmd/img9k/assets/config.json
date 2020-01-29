@@ -72,6 +72,10 @@
         "if this doesn't work please open an issue on github"
     ],
 
+    "filesystem": "local",
+
+    "local_storage": "i",
+
     "cache_duration": "24h",
 
     "max_cache_bytes": 891289600

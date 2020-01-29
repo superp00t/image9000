@@ -47,19 +47,6 @@ i9k.setup = function() {
     i9k.beginUpload(pf.files[0]);
   });
 
-  q(".centralCard").insertBefore(
-    parseHtml(
-      `<div class="check">
-        <input type="checkbox" id="encryption"></input>
-        <label for="encryption">Use encryption</label>
-      </div>`),
-      q(".dragDiv")
-  );
-
-  q("#encryption").addEventListener("change", function() {
-    i9k.useEncryption = !i9k.useEncryption;
-  });
-
   q(".dragDiv").addEventListener("click", function() {
     q("#proxyFile").click();
   });
@@ -124,35 +111,7 @@ i9k.beginUpload = function(file) {
     q(".info")
   );
 
-  if (i9k.useEncryption) {
-    var fr = new FileReader();
-    i9k.setProgressBar(10);
-    console.log("loading file");
-    fr.onload = function(e) {
-      console.log("file loaded");
-      var u8 = new Uint8Array(e.target.result);
-      var header = new etc.Buffer();
-      header.writeString(file.type);
-      header.writeLimitedBytes(etc.crypto.nacl.randomBytes(etc.RandomInt(1000, 5000)));
-      var prefix = header.finish();
-
-      var data = u8concat(prefix, u8);
-
-      i9k.encryptionKey = etc.crypto.nacl.randomBytes(24);
-      var h = hkdf(i9k.encryptionKey, window.location.hostname);
-
-      console.log("encrypting");
-
-      var data = etc.crypto.nacl.secretbox(data, h.nonce, h.key);
-      var blob = new Blob([data]);
-
-      var fi = new File([blob], "encrypted.i9k", {type: "application/octet-stream"});
-      i9k.postFile(fi);
-    }
-    fr.readAsArrayBuffer(file);
-  } else {
-    i9k.postFile(file);
-  }
+  i9k.postFile(file);
 }
 
 i9k.postFile = function(file) {
@@ -163,16 +122,7 @@ i9k.postFile = function(file) {
   x.onreadystatechange = function() {
     if (x.readyState === 4) {
       if (x.status < 400) {
-        if (i9k.encryptionKey) {
-          if (x.responseURL.endsWith("/upload")) {
-            alert(x.responseText);
-            return;
-          }
-
-          window.location.href = x.responseURL + "#" + etc.Encoding.encodeToURL(i9k.encryptionKey);
-        } else {
-          window.location.href = x.responseURL;
-        }
+        window.location.href = x.responseURL;
       } else {
         alert(x.statusText + ": " + x.responseText);
         window.location.reload();
