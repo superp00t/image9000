@@ -46,9 +46,10 @@ func extractContentType(rw http.ResponseWriter, path string) {
 				return
 			}
 		}
-	}
 
-	yo.Warn("could not find extension type for", path)
+		yo.Warn("could not find extension type for", ex, path)
+		yo.Spew(Config.AcceptedFmt)
+	}
 }
 
 func (c *cacher) serveFile(rw http.ResponseWriter, r *http.Request, path string) {
