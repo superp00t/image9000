@@ -16,7 +16,8 @@ import (
 )
 
 const (
-	MaxChunkSize = 1048576 * 32
+	// 3 megabytes
+	MaxChunkSize = 3e+6
 )
 
 type File struct {
