@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -35,6 +36,18 @@ func (c *cacher) Available() uint64 {
 	return directory.Concat("c").Free()
 }
 
+func extractContentType(rw http.ResponseWriter, path string) {
+	ext := filepath.Ext(path)
+	if ext != "" {
+		ex := ext[1:]
+		for mime, extension := range Config.AcceptedFmt {
+			if extension == ex {
+				rw.Header().Set("Content-Type", mime)
+			}
+		}
+	}
+}
+
 func (c *cacher) serveFile(rw http.ResponseWriter, r *http.Request, path string) {
 	finf, err := fsystem.Stat(path)
 	if err != nil {
@@ -49,62 +62,8 @@ func (c *cacher) serveFile(rw http.ResponseWriter, r *http.Request, path string)
 		Size:   finf.Size(),
 	}
 
+	extractContentType(rw, path)
 	http.ServeContent(rw, r, path, finf.ModTime(), fsrs)
-}
-
-func (c *cacher) serveContent(rw http.ResponseWriter, r *http.Request, name, path string) {
-	// if strings.Contains(r.Header.Get("Accept-Ranges"), "-") {
-	// 	// Cannot serve compressed in this fashion
-	// 	c.serveFile(rw, r, path)
-	// 	return
-	// }
-
-	// if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
-	// 	file, err := etc.FileController(path, true)
-	// 	if err != nil {
-	// 		yo.Warn("Cannot open file", path, err)
-	// 		return
-	// 	}
-
-	// 	tp := http.DetectContentType(file.ReadBytes(512))
-
-	// 	typeMap := map[string]string{
-	// 		"svg": "image/svg+xml; charset=utf-8",
-	// 		"css": "text/css; charset=utf-8",
-	// 		"js":  "application/javascript; charset=utf-8",
-	// 	}
-
-	// 	s := strings.Split(name, ".")
-	// 	typ := s[len(s)-1]
-	// 	if typeMap[typ] != "" {
-	// 		tp = typeMap[typ]
-	// 	} else {
-	// 		yo.Warn(s)
-	// 		yo.Warn(typ)
-	// 		yo.Warn(tp)
-	// 	}
-
-	// 	yo.Ok("type == ", tp)
-	// 	yo.Ok("content == ", path)
-
-	// 	rw.Header().Set("Content-Type", tp)
-	// 	rw.Header().Set("Content-Encoding", "gzip")
-
-	// 	file.SeekR(0)
-	// 	rw.WriteHeader(200)
-
-	// 	gz := gzip.NewWriter(rw)
-	// 	_, err = io.Copy(gz, file)
-	// 	if err != nil {
-	// 		yo.Warn(err)
-	// 	}
-	// 	gz.Close()
-	// 	file.Close()
-
-	// 	return
-	// }
-
-	c.serveFile(rw, r, path)
 }
 
 func (c *cacher) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
@@ -115,6 +74,7 @@ func (c *cacher) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 
 	if pCachePath.IsExtant() && time.Since(pCachePath.Time()) < Config.CacheDuration.Duration {
 		// cached file exists.
+		extractContentType(rw, pth)
 		http.ServeFile(rw, r, pCachePath.Render())
 		return
 	}
@@ -123,6 +83,7 @@ func (c *cacher) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// serve cached file in case of backend outage.
 		if pCachePath.IsExtant() {
+			extractContentType(rw, pth)
 			http.ServeFile(rw, r, pCachePath.Render())
 			return
 		}
@@ -178,5 +139,6 @@ func (c *cacher) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
 
 	f.Close()
 
+	extractContentType(rw, pth)
 	http.ServeFile(rw, r, pCachePath.Render())
 }
