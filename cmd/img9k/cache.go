@@ -46,9 +46,6 @@ func extractContentType(rw http.ResponseWriter, path string) {
 				return
 			}
 		}
-
-		yo.Warn("could not find extension type for", ex, path)
-		yo.Spew(Config.AcceptedFmt)
 	}
 }
 
