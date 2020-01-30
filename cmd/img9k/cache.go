@@ -43,9 +43,12 @@ func extractContentType(rw http.ResponseWriter, path string) {
 		for mime, extension := range Config.AcceptedFmt {
 			if extension == ex {
 				rw.Header().Set("Content-Type", mime)
+				return
 			}
 		}
 	}
+
+	yo.Warn("could not find extension type for", path)
 }
 
 func (c *cacher) serveFile(rw http.ResponseWriter, r *http.Request, path string) {
