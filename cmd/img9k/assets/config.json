@@ -35,6 +35,8 @@
         "text/plain": "txt",
         "text/plain; charset=utf-8": "txt",
         "text/xml; charset=utf-8": "xml",
+        "text/css; charset=utf-8": "css",
+        "application/javascript; charset=utf-8": "js",
         "image/heif": "heic",
         "image/heic": "heic",
         "image/heif-sequence": "heic",

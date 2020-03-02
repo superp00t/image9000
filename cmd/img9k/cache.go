@@ -68,6 +68,9 @@ func (c *cacher) serveFile(rw http.ResponseWriter, r *http.Request, path string)
 }
 
 func (c *cacher) ServeHTTP(rw http.ResponseWriter, r *http.Request) {
+	rw.Header().Set("Access-Control-Allow-Origin", "*")
+    rw.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+    rw.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
 	pth := r.URL.Path[1:]
 	yo.Ok("Serving", pth)
 	hash := hashString(pth)
